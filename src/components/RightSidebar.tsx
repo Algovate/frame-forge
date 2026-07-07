@@ -8,7 +8,7 @@ import {
   Type,
   type LucideIcon,
 } from 'lucide-react';
-import type { CaptionSettings, ExtractedFrame } from '../types';
+import type { CaptionSettings, ExtractedFrame, WechatReadiness } from '../types';
 import { AnimationPreview } from './AnimationPreview';
 import { HEADING, FIELD } from './ui';
 
@@ -28,6 +28,7 @@ interface RightSidebarProps {
   caption: CaptionSettings;
   setCaption: (caption: CaptionSettings) => void;
   onApplyCaption: () => void;
+  readiness: WechatReadiness;
   onRemoveBackgrounds: () => void;
   onExportZIP: () => void;
   onExportGIF: () => void;
@@ -44,6 +45,12 @@ const EXPORT_TABS = [
 ] as const;
 
 type ExportTabId = (typeof EXPORT_TABS)[number]['id'];
+
+const formatBytes = (bytes?: number) => {
+  if (!bytes) return '-';
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
 
 export function RightSidebar(props: RightSidebarProps) {
   const [exportTab, setExportTab] = useState<ExportTabId>('gif');
@@ -171,6 +178,38 @@ export function RightSidebar(props: RightSidebarProps) {
         </div>
       </div>
 
+      {/* WeChat readiness */}
+      <div className="glass-panel rounded-card p-5">
+        <h2 className={HEADING}>
+          <Film className="w-5 h-5 text-primary" aria-hidden="true" /> WeChat check
+        </h2>
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="rounded-control border border-hairline p-2">
+            <span className="block text-muted">Size</span>
+            <span className="font-mono text-foreground">
+              {props.exportWidth} x {props.exportHeight}
+            </span>
+          </div>
+          <div className="rounded-control border border-hairline p-2">
+            <span className="block text-muted">Frames</span>
+            <span className="font-mono text-foreground">{props.readiness.selectedCount}</span>
+          </div>
+          <div className="rounded-control border border-hairline p-2">
+            <span className="block text-muted">Duration</span>
+            <span className="font-mono text-foreground">{(props.readiness.durationMs / 1000).toFixed(1)}s</span>
+          </div>
+          <div className="rounded-control border border-hairline p-2">
+            <span className="block text-muted">Last GIF</span>
+            <span className="font-mono text-foreground">{formatBytes(props.readiness.actualSizeBytes)}</span>
+          </div>
+        </div>
+        <ul className="mt-3 space-y-1 text-xs text-muted">
+          {props.readiness.messages.map((message) => (
+            <li key={message}>{message}</li>
+          ))}
+        </ul>
+      </div>
+
       {/* Image cleanup */}
       <div className="glass-panel rounded-card p-5">
         <h2 className={HEADING}>
@@ -193,6 +232,7 @@ export function RightSidebar(props: RightSidebarProps) {
         <h2 className={HEADING}>
           <Download className="w-5 h-5 text-primary" aria-hidden="true" /> Export
         </h2>
+        <p className="text-xs text-muted mb-3">GIF is the primary WeChat path. ZIP and Sprite are advanced exports.</p>
 
         <div className="flex gap-1 p-1 bg-surface-hover rounded-control border border-hairline mb-4">
           {EXPORT_TABS.map((t) => (

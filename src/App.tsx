@@ -11,7 +11,7 @@ import { findDuplicateFrames, findLoopFrames, findJumpFrames, batchRemoveBackgro
 import type { PixelRect } from './utils/canvasEditor';
 import { exportZIP, exportGIF, exportSpriteSheet } from './utils/exporters';
 import { classifyStickerSource, revokeFrameUrls } from './utils/media';
-import { WECHAT_STICKER_PRESET } from './utils/wechat';
+import { WECHAT_STICKER_PRESET, getWechatReadiness } from './utils/wechat';
 import { DEFAULT_CAPTION, applyCaptionToFrames } from './utils/captions';
 import { Loader2 } from 'lucide-react';
 
@@ -32,6 +32,7 @@ function App() {
   const [startTime, setStartTime] = useState<number>(0);
   const [endTime, setEndTime] = useState<number>(-1);
   const [caption, setCaption] = useState(DEFAULT_CAPTION);
+  const [lastGifSizeBytes, setLastGifSizeBytes] = useState<number | undefined>();
 
   // Sprite Sheet Settings
   const [spriteCols, setSpriteCols] = useState<number>(0);
@@ -79,6 +80,7 @@ function App() {
         revokeFrameUrls(frames); // free matting output from the previous file
         setFrames([]);
         setSourceFile(file);
+        setLastGifSizeBytes(undefined);
         pushToast('success', `Loaded ${file.name}`);
         return;
       }
@@ -104,6 +106,7 @@ function App() {
       async () => {
         revokeFrameUrls(frames); // free matting output before re-extracting
         setFrames([]);
+        setLastGifSizeBytes(undefined);
         let extracted: ExtractedFrame[];
         if (kind === 'gif') {
           extracted = await extractFromGIF(sourceFile, (f) => setFrames([...f]));
@@ -124,6 +127,7 @@ function App() {
       const before = frames.filter((f) => f.selected).length;
       const next = await findDuplicateFrames(frames, threshold);
       setFrames(next);
+      setLastGifSizeBytes(undefined);
       const removed = before - next.filter((f) => f.selected).length;
       pushToast('info', removed > 0 ? `Unselected ${removed} duplicate frame${removed === 1 ? '' : 's'}` : 'No duplicate frames found');
     }, 'Could not analyze frames');
@@ -133,6 +137,7 @@ function App() {
       const before = frames.filter((f) => f.selected).length;
       const next = await findLoopFrames(frames, threshold);
       setFrames(next);
+      setLastGifSizeBytes(undefined);
       const removed = before - next.filter((f) => f.selected).length;
       pushToast('info', removed > 0 ? `Unselected ${removed} trailing frame${removed === 1 ? '' : 's'} to form loop` : 'No loop found');
     }, 'Could not analyze frames');
@@ -142,28 +147,33 @@ function App() {
       const before = frames.filter((f) => f.selected).length;
       const next = await findJumpFrames(frames, threshold);
       setFrames(next);
+      setLastGifSizeBytes(undefined);
       const removed = before - next.filter((f) => f.selected).length;
       pushToast('info', removed > 0 ? `Unselected ${removed} jump frame${removed === 1 ? '' : 's'}` : 'No jump frames found');
     }, 'Could not analyze frames');
 
   const handleInvertSelection = () => {
     setFrames(frames.map((f) => ({ ...f, selected: !f.selected })));
+    setLastGifSizeBytes(undefined);
   };
 
   const handleReverseFrames = () => {
     setFrames([...frames].reverse());
+    setLastGifSizeBytes(undefined);
   };
 
   const handleRemoveSubsequent = (fromId: string) => {
     const idx = frames.findIndex((f) => f.id === fromId);
     if (idx === -1) return;
     setFrames(frames.map((f, i) => (i > idx ? { ...f, selected: false } : f)));
+    setLastGifSizeBytes(undefined);
   };
 
   const handleRemovePreceding = (toId: string) => {
     const idx = frames.findIndex((f) => f.id === toId);
     if (idx === -1) return;
     setFrames(frames.map((f, i) => (i < idx ? { ...f, selected: false } : f)));
+    setLastGifSizeBytes(undefined);
   };
 
   const handleRemoveBackgrounds = () =>
@@ -173,6 +183,7 @@ function App() {
         setFrames([...updatedFrames]);
       });
       setFrames(next);
+      setLastGifSizeBytes(undefined);
       pushToast('success', 'Background removal complete');
     }, 'Background removal failed');
 
@@ -191,6 +202,7 @@ function App() {
         : frames;
       const result = await exportGIF(exportFrames, gifDelay, exportWidth, exportHeight);
       if (result) {
+        setLastGifSizeBytes(result.sizeBytes);
         pushToast('success', `GIF ready (${Math.round(result.sizeBytes / 1024)} KB)`);
       }
     }, 'GIF export failed');
@@ -210,23 +222,30 @@ function App() {
 
   const toggleFrameSelection = (id: string) => {
     setFrames(frames.map((f) => (f.id === id ? { ...f, selected: !f.selected } : f)));
+    setLastGifSizeBytes(undefined);
   };
 
   const deleteSelected = () => {
     revokeFrameUrls(frames.filter((f) => f.selected));
     setFrames(frames.filter((f) => !f.selected));
+    setLastGifSizeBytes(undefined);
   };
   const deleteUnselected = () => {
     revokeFrameUrls(frames.filter((f) => !f.selected));
     setFrames(frames.filter((f) => f.selected));
+    setLastGifSizeBytes(undefined);
   };
-  const selectAll = () => setFrames(frames.map((f) => ({ ...f, selected: true })));
+  const selectAll = () => {
+    setFrames(frames.map((f) => ({ ...f, selected: true })));
+    setLastGifSizeBytes(undefined);
+  };
 
   const handleApplyCaption = () => {
     if (!caption.enabled || !caption.text.trim()) return pushToast('info', 'Enter caption text first');
     runProcessing('exporting', 'Rendering caption...', async () => {
       const updatedFrames = await applyCaptionToFrames(frames, caption);
       setFrames(updatedFrames);
+      setLastGifSizeBytes(undefined);
       setCaption((prev) => ({ ...prev, enabled: false }));
       pushToast('success', 'Caption applied to selected frames');
     }, 'Caption rendering failed');
@@ -234,6 +253,7 @@ function App() {
 
   const handleSaveEdit = (id: string, newDataUrl: string) => {
     setFrames(frames.map(f => f.id === id ? { ...f, dataUrl: newDataUrl } : f));
+    setLastGifSizeBytes(undefined);
     setEditingFrameId(null);
     pushToast('success', 'Frame saved');
   };
@@ -246,6 +266,7 @@ function App() {
     runProcessing('batch-cropping', 'Applying crop to selected frames...', async () => {
       const updatedFrames = await cropFrames(frames, rect, true);
       setFrames(updatedFrames);
+      setLastGifSizeBytes(undefined);
       pushToast('success', `Cropped ${croppedCount} selected frame${croppedCount === 1 ? '' : 's'}`);
     }, 'Batch crop failed');
   };
@@ -255,6 +276,7 @@ function App() {
   const previousEditingFrame = editingFrameIndex > 0 ? frames[editingFrameIndex - 1] : null;
   const nextEditingFrame = editingFrameIndex >= 0 && editingFrameIndex < frames.length - 1 ? frames[editingFrameIndex + 1] : null;
   const sourceKind = sourceFile ? classifyStickerSource(sourceFile) : null;
+  const readiness = getWechatReadiness(frames, exportWidth, exportHeight, gifDelay, lastGifSizeBytes);
 
   return (
     <div className="h-screen flex flex-col overflow-hidden px-4 sm:px-6 lg:px-8 py-4 text-foreground relative">
@@ -304,11 +326,20 @@ function App() {
           frames={frames}
           isProcessing={isProcessing}
           gifDelay={gifDelay}
-          setGifDelay={setGifDelay}
+          setGifDelay={(delay) => {
+            setGifDelay(delay);
+            setLastGifSizeBytes(undefined);
+          }}
           exportWidth={exportWidth}
-          setExportWidth={setExportWidth}
+          setExportWidth={(width) => {
+            setExportWidth(width);
+            setLastGifSizeBytes(undefined);
+          }}
           exportHeight={exportHeight}
-          setExportHeight={setExportHeight}
+          setExportHeight={(height) => {
+            setExportHeight(height);
+            setLastGifSizeBytes(undefined);
+          }}
           spriteCols={spriteCols}
           setSpriteCols={setSpriteCols}
           spritePadding={spritePadding}
@@ -316,6 +347,7 @@ function App() {
           caption={caption}
           setCaption={setCaption}
           onApplyCaption={handleApplyCaption}
+          readiness={readiness}
           onRemoveBackgrounds={handleRemoveBackgrounds}
           onExportZIP={handleExportZIP}
           onExportGIF={handleExportGIF}

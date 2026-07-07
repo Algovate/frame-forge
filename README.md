@@ -1,11 +1,16 @@
 # Frame Forge
 
-Frame Forge is a browser-based tool for extracting frames from videos or GIFs, cleaning up frame sequences, editing individual frames, and exporting the result as PNG frames, an animated GIF, or a sprite sheet.
+Frame Forge is a browser-based tool for making WeChat dynamic stickers from videos and GIFs. It extracts or parses sticker frames, helps clean and caption the sequence, previews the animation, checks the WeChat export setup, and exports a 240 x 240 animated GIF.
 
 ## Features
 
-- Import GIFs and common video formats.
-- Extract frames with FPS and time-range controls.
+- Create WeChat dynamic stickers from GIFs and common video formats.
+- Extract video frames with FPS and time-range controls.
+- Parse GIF frames into an editable sticker-frame sequence.
+- Use a 240 x 240 WeChat sticker export preset.
+- Preview selected frames at the configured GIF delay.
+- Add high-contrast caption text to selected frames.
+- Check size, frame count, duration, and last export size before exporting.
 - Select, invert, reverse, clip, and delete frame ranges.
 - Find duplicate, loop, and jump frames with a similarity threshold.
 - Remove backgrounds from selected frames.
@@ -13,7 +18,19 @@ Frame Forge is a browser-based tool for extracting frames from videos or GIFs, c
 - Crop one frame or crop selected frames from the editor.
 - Use pixel-precise crop inputs plus Full, Center, and 1:1 crop actions.
 - Compare edits against previous or next frames with onion-skin overlay.
-- Export selected frames as ZIP, animated GIF, or sprite sheet.
+- Export selected frames as a WeChat GIF, ZIP archive, or sprite sheet.
+
+## WeChat Dynamic Sticker Workflow
+
+1. Import a video or GIF.
+2. Extract or parse sticker frames.
+3. Crop or fit the result to 240 x 240.
+4. Clean unwanted frames.
+5. Add captions if needed.
+6. Check the WeChat readiness panel.
+7. Export `wechat-sticker.gif`.
+
+Static image animation is not part of the current dynamic-sticker workflow. Use a video or GIF source for animated stickers.
 
 ## Frame Editor
 
