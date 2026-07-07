@@ -5,9 +5,10 @@ import {
   Download,
   Archive,
   LayoutGrid,
+  Type,
   type LucideIcon,
 } from 'lucide-react';
-import type { ExtractedFrame } from '../types';
+import type { CaptionSettings, ExtractedFrame } from '../types';
 import { AnimationPreview } from './AnimationPreview';
 import { HEADING, FIELD } from './ui';
 
@@ -24,6 +25,9 @@ interface RightSidebarProps {
   setSpriteCols: (cols: number) => void;
   spritePadding: number;
   setSpritePadding: (pad: number) => void;
+  caption: CaptionSettings;
+  setCaption: (caption: CaptionSettings) => void;
+  onApplyCaption: () => void;
   onRemoveBackgrounds: () => void;
   onExportZIP: () => void;
   onExportGIF: () => void;
@@ -63,6 +67,107 @@ export function RightSidebar(props: RightSidebarProps) {
         </h2>
         <div className="relative aspect-[4/3] sm:aspect-video w-full min-h-[200px]">
           <AnimationPreview frames={props.frames} delayMs={props.gifDelay} />
+        </div>
+      </div>
+
+      {/* Caption */}
+      <div className="glass-panel rounded-card p-5">
+        <h2 className={HEADING}>
+          <Type className="w-5 h-5 text-primary" aria-hidden="true" /> Caption
+        </h2>
+        <div className="space-y-3">
+          <label className="flex items-center gap-2 text-sm text-muted">
+            <input
+              type="checkbox"
+              checked={props.caption.enabled}
+              onChange={(e) => props.setCaption({ ...props.caption, enabled: e.target.checked })}
+              className="accent-primary"
+            />
+            Render caption on export
+          </label>
+
+          <input
+            value={props.caption.text}
+            onChange={(e) => props.setCaption({ ...props.caption, text: e.target.value })}
+            placeholder="Sticker text"
+            className={FIELD}
+          />
+
+          <div className="grid grid-cols-2 gap-2">
+            <label htmlFor="caption-size" className="block">
+              <span className="block text-[11px] text-muted mb-1">Size</span>
+              <input
+                id="caption-size"
+                type="number"
+                min={12}
+                max={72}
+                value={props.caption.fontSize}
+                onChange={(e) => props.setCaption({ ...props.caption, fontSize: Number(e.target.value) })}
+                className={FIELD}
+              />
+            </label>
+            <label htmlFor="caption-stroke" className="block">
+              <span className="block text-[11px] text-muted mb-1">Stroke</span>
+              <input
+                id="caption-stroke"
+                type="number"
+                min={0}
+                max={12}
+                value={props.caption.strokeWidth}
+                onChange={(e) => props.setCaption({ ...props.caption, strokeWidth: Number(e.target.value) })}
+                className={FIELD}
+              />
+            </label>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <label htmlFor="caption-fill" className="block">
+              <span className="block text-[11px] text-muted mb-1">Text</span>
+              <input
+                id="caption-fill"
+                type="color"
+                value={props.caption.fillColor}
+                onChange={(e) => props.setCaption({ ...props.caption, fillColor: e.target.value })}
+                className="h-10 w-full rounded-control border border-hairline bg-surface-hover p-1"
+              />
+            </label>
+            <label htmlFor="caption-outline" className="block">
+              <span className="block text-[11px] text-muted mb-1">Outline</span>
+              <input
+                id="caption-outline"
+                type="color"
+                value={props.caption.strokeColor}
+                onChange={(e) => props.setCaption({ ...props.caption, strokeColor: e.target.value })}
+                className="h-10 w-full rounded-control border border-hairline bg-surface-hover p-1"
+              />
+            </label>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            {(['top', 'middle', 'bottom'] as const).map((position) => (
+              <button
+                key={position}
+                type="button"
+                onClick={() => props.setCaption({ ...props.caption, position })}
+                className={`min-h-[34px] rounded-control border text-xs capitalize transition-colors ${
+                  props.caption.position === position
+                    ? 'border-primary text-primary bg-primary/10'
+                    : 'border-hairline text-muted hover:text-foreground'
+                }`}
+              >
+                {position}
+              </button>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={props.onApplyCaption}
+            disabled={props.isProcessing}
+            className="w-full min-h-[40px] rounded-control bg-primary text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            Apply to selected frames
+          </button>
         </div>
       </div>
 

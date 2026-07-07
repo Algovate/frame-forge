@@ -12,6 +12,7 @@ import type { PixelRect } from './utils/canvasEditor';
 import { exportZIP, exportGIF, exportSpriteSheet } from './utils/exporters';
 import { classifyStickerSource, revokeFrameUrls } from './utils/media';
 import { WECHAT_STICKER_PRESET } from './utils/wechat';
+import { DEFAULT_CAPTION, applyCaptionToFrames } from './utils/captions';
 import { Loader2 } from 'lucide-react';
 
 function App() {
@@ -30,6 +31,7 @@ function App() {
   const [exportHeight, setExportHeight] = useState<number>(WECHAT_STICKER_PRESET.height);
   const [startTime, setStartTime] = useState<number>(0);
   const [endTime, setEndTime] = useState<number>(-1);
+  const [caption, setCaption] = useState(DEFAULT_CAPTION);
 
   // Sprite Sheet Settings
   const [spriteCols, setSpriteCols] = useState<number>(0);
@@ -184,7 +186,10 @@ function App() {
   const handleExportGIF = () => {
     if (!frames.some((f) => f.selected)) return pushToast('info', 'Select at least one frame first');
     runProcessing('exporting', 'Encoding GIF...', async () => {
-      const result = await exportGIF(frames, gifDelay, exportWidth, exportHeight);
+      const exportFrames = caption.enabled && caption.text.trim()
+        ? await applyCaptionToFrames(frames, caption)
+        : frames;
+      const result = await exportGIF(exportFrames, gifDelay, exportWidth, exportHeight);
       if (result) {
         pushToast('success', `GIF ready (${Math.round(result.sizeBytes / 1024)} KB)`);
       }
@@ -216,6 +221,16 @@ function App() {
     setFrames(frames.filter((f) => f.selected));
   };
   const selectAll = () => setFrames(frames.map((f) => ({ ...f, selected: true })));
+
+  const handleApplyCaption = () => {
+    if (!caption.enabled || !caption.text.trim()) return pushToast('info', 'Enter caption text first');
+    runProcessing('exporting', 'Rendering caption...', async () => {
+      const updatedFrames = await applyCaptionToFrames(frames, caption);
+      setFrames(updatedFrames);
+      setCaption((prev) => ({ ...prev, enabled: false }));
+      pushToast('success', 'Caption applied to selected frames');
+    }, 'Caption rendering failed');
+  };
 
   const handleSaveEdit = (id: string, newDataUrl: string) => {
     setFrames(frames.map(f => f.id === id ? { ...f, dataUrl: newDataUrl } : f));
@@ -298,6 +313,9 @@ function App() {
           setSpriteCols={setSpriteCols}
           spritePadding={spritePadding}
           setSpritePadding={setSpritePadding}
+          caption={caption}
+          setCaption={setCaption}
+          onApplyCaption={handleApplyCaption}
           onRemoveBackgrounds={handleRemoveBackgrounds}
           onExportZIP={handleExportZIP}
           onExportGIF={handleExportGIF}
