@@ -26,6 +26,18 @@ describe('getWechatReadiness', () => {
       isSquare: true,
       isWechatSize: true,
       hasFrames: true,
+      messages: ['Dimensions ready. Export once to measure file size.'],
+    });
+  });
+
+  it('reports ready only after a GIF has been measured', () => {
+    expect(getWechatReadiness(frames, 240, 240, 100, 4096)).toEqual({
+      selectedCount: 2,
+      durationMs: 200,
+      isSquare: true,
+      isWechatSize: true,
+      hasFrames: true,
+      actualSizeBytes: 4096,
       messages: ['Ready for WeChat GIF export.'],
     });
   });
