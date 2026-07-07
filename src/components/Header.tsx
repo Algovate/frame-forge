@@ -8,7 +8,7 @@ export function Header() {
           <Layers className="w-5 h-5 text-white" aria-hidden="true" />
         </div>
         <div>
-          <h1 className="text-xl font-bold tracking-tight leading-tight">FramePacker</h1>
+          <h1 className="text-xl font-bold tracking-tight leading-tight">FrameForge</h1>
           <p className="text-xs text-muted leading-tight mt-0.5">
             Browser-based frame extractor
           </p>
