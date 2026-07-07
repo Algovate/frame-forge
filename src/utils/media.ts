@@ -1,4 +1,18 @@
 /** Shared DOM/image helpers used by both the processing and export pipelines. */
+import type { StickerSourceKind } from '../types';
+
+const VIDEO_EXT = ['mp4', 'webm', 'ogg', 'ogv', 'mov', 'm4v', 'mkv', 'avi', 'flv', 'wmv', '3gp', 'ts'];
+const STATIC_IMAGE_EXT = ['png', 'jpg', 'jpeg', 'webp', 'bmp'];
+
+export const classifyStickerSource = (file: File): StickerSourceKind | null => {
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+  if (file.type === 'image/gif' || ext === 'gif') return 'gif';
+  if (file.type.startsWith('video/') || VIDEO_EXT.includes(ext)) return 'video';
+  if ((file.type.startsWith('image/') && file.type !== 'image/gif') || STATIC_IMAGE_EXT.includes(ext)) {
+    return 'static-image';
+  }
+  return null;
+};
 
 /** Load an HTMLImageElement from any src the browser accepts
  *  (data URL, blob URL, http URL). Rejects on error so callers can't hang
