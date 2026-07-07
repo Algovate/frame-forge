@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, type DragEvent, type SyntheticEvent } from 'react';
 import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
 import {
@@ -48,18 +48,18 @@ export function LeftSidebar(props: LeftSidebarProps) {
 
   // Drag-counter pattern: entering a child fires dragleave on the parent and
   // would flicker the highlight without the counter.
-  const onDragEnter = (e: React.DragEvent) => {
+  const onDragEnter = (e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     dragCounter.current += 1;
     if (e.dataTransfer.types?.includes('Files')) setIsDragOver(true);
   };
-  const onDragOver = (e: React.DragEvent) => {
+  const onDragOver = (e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     e.dataTransfer.dropEffect = 'copy';
   };
-  const onDragLeave = (e: React.DragEvent) => {
+  const onDragLeave = (e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     dragCounter.current -= 1;
@@ -68,7 +68,7 @@ export function LeftSidebar(props: LeftSidebarProps) {
       setIsDragOver(false);
     }
   };
-  const onDrop = (e: React.DragEvent) => {
+  const onDrop = (e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     dragCounter.current = 0;
@@ -76,7 +76,7 @@ export function LeftSidebar(props: LeftSidebarProps) {
     props.onFileSelected(e.dataTransfer.files?.[0]);
   };
 
-  const handleVideoLoadedMetadata = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+  const handleVideoLoadedMetadata = (e: SyntheticEvent<HTMLVideoElement>) => {
     const duration = (e.target as HTMLVideoElement).duration;
     setVideoDuration(duration);
     if (props.endTime === -1 || props.endTime > duration) {
