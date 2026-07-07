@@ -1,6 +1,6 @@
 import { Image as ImageIcon, Trash2, Check, Shuffle, ArrowRightToLine, ArrowLeftToLine, Undo2, Repeat, Zap, Copy, Pen } from 'lucide-react';
 import type { ExtractedFrame } from '../types';
-import { useState } from 'react';
+import { useState, type KeyboardEvent } from 'react';
 import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
 import { SLIDER_STYLES } from './ui';
@@ -55,6 +55,12 @@ export function FrameGallery({
   const handleToggleSelection = (id: string) => {
     setLastClickedId(id);
     onToggleSelection(id);
+  };
+
+  const handleFrameKeyDown = (event: KeyboardEvent<HTMLDivElement>, id: string) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    handleToggleSelection(id);
   };
 
   return (
@@ -167,10 +173,12 @@ export function FrameGallery({
         <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 pb-5">
           <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
             {frames.map((frame, index) => (
-              <button
+              <div
                 key={frame.id}
-                type="button"
+                role="button"
+                tabIndex={0}
                 onClick={() => handleToggleSelection(frame.id)}
+                onKeyDown={(event) => handleFrameKeyDown(event, frame.id)}
                 aria-pressed={frame.selected}
                 aria-label={`Frame ${index + 1}${frame.selected ? ', selected' : ', not selected'}`}
                 className={`group relative aspect-video rounded-control overflow-hidden border cursor-pointer transition-all duration-150 frame-checker ${
@@ -204,7 +212,7 @@ export function FrameGallery({
                 >
                   <Pen className="w-3.5 h-3.5" />
                 </button>
-              </button>
+              </div>
             ))}
           </div>
         </div>
