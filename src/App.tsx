@@ -10,19 +10,8 @@ import { extractFromGIF, extractFromVideo } from './utils/extractors';
 import { findDuplicateFrames, findLoopFrames, findJumpFrames, batchRemoveBackground, cropFrames } from './utils/processors';
 import type { PixelRect } from './utils/canvasEditor';
 import { exportZIP, exportGIF, exportSpriteSheet } from './utils/exporters';
-import { revokeFrameUrls } from './utils/media';
+import { classifyStickerSource, revokeFrameUrls } from './utils/media';
 import { Loader2 } from 'lucide-react';
-
-const VIDEO_EXT = ['mp4', 'webm', 'ogg', 'ogv', 'mov', 'm4v', 'mkv', 'avi', 'flv', 'wmv', '3gp', 'ts'];
-
-/** Classify a dropped file by MIME (preferred), with an extension fallback so
- *  videos whose OS didn't tag a MIME type aren't wrongly rejected. */
-const classifyMedia = (file: File): 'gif' | 'video' | null => {
-  const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
-  if (file.type === 'image/gif' || ext === 'gif') return 'gif';
-  if (file.type.startsWith('video/') || VIDEO_EXT.includes(ext)) return 'video';
-  return null;
-};
 
 function App() {
   const [sourceFile, setSourceFile] = useState<File | null>(null);
@@ -81,22 +70,28 @@ function App() {
    *  + feedback can never diverge between the two paths. */
   const acceptFile = useCallback(
     (file?: File | null) => {
-      if (file && classifyMedia(file)) {
+      if (!file) return;
+      const kind = classifyStickerSource(file);
+      if (kind === 'gif' || kind === 'video') {
         revokeFrameUrls(frames); // free matting output from the previous file
         setFrames([]);
         setSourceFile(file);
         pushToast('success', `Loaded ${file.name}`);
-      } else if (file) {
-        pushToast('error', 'Unsupported file. Use a video or GIF.');
+        return;
       }
+      if (kind === 'static-image') {
+        pushToast('info', 'Static image animation is not supported in this version. Use a video or GIF for dynamic stickers.');
+        return;
+      }
+      pushToast('error', 'Unsupported file. Use a video or GIF.');
     },
     [pushToast, frames],
   );
 
   const processSource = () => {
     if (!sourceFile) return;
-    const kind = classifyMedia(sourceFile);
-    if (!kind) {
+    const kind = classifyStickerSource(sourceFile);
+    if (kind !== 'gif' && kind !== 'video') {
       pushToast('error', 'Unsupported file. Use a video or GIF.');
       return;
     }
@@ -241,6 +236,7 @@ function App() {
   const editingFrame = editingFrameIndex >= 0 ? frames[editingFrameIndex] : null;
   const previousEditingFrame = editingFrameIndex > 0 ? frames[editingFrameIndex - 1] : null;
   const nextEditingFrame = editingFrameIndex >= 0 && editingFrameIndex < frames.length - 1 ? frames[editingFrameIndex + 1] : null;
+  const sourceKind = sourceFile ? classifyStickerSource(sourceFile) : null;
 
   return (
     <div className="h-screen flex flex-col overflow-hidden px-4 sm:px-6 lg:px-8 py-4 text-foreground relative">
@@ -257,6 +253,7 @@ function App() {
           setStartTime={setStartTime}
           endTime={endTime}
           setEndTime={setEndTime}
+          sourceKind={sourceKind}
           onFileSelected={acceptFile}
           onProcessSource={processSource}
         />

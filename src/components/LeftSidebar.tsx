@@ -7,7 +7,7 @@ import {
   Settings,
   Loader2,
 } from 'lucide-react';
-import type { ProcessingPhase } from '../types';
+import type { ProcessingPhase, StickerSourceKind } from '../types';
 import { Header } from './Header';
 import { HEADING, SLIDER_STYLES } from './ui';
 
@@ -21,6 +21,7 @@ interface LeftSidebarProps {
   setStartTime: (t: number) => void;
   endTime: number;
   setEndTime: (t: number) => void;
+  sourceKind: StickerSourceKind | null;
   onFileSelected: (file?: File | null) => void;
   onProcessSource: () => void;
 }
@@ -100,10 +101,13 @@ export function LeftSidebar(props: LeftSidebarProps) {
   };
 
   const extracting = props.isProcessing && props.phase === 'extracting';
+  const isVideoSource = props.sourceKind === 'video';
   
   // Calculate estimated frames
   const actualEndTime = props.endTime >= 0 ? props.endTime : videoDuration;
   const estimatedFrames = Math.max(0, Math.floor((actualEndTime - props.startTime) * props.fps));
+  const canProcessSource = Boolean(props.sourceFile) && !props.isProcessing && (!isVideoSource || estimatedFrames > 0);
+  const processLabel = props.sourceKind === 'gif' ? 'Parse GIF frames' : 'Extract sticker frames';
 
 
   return (
@@ -111,10 +115,10 @@ export function LeftSidebar(props: LeftSidebarProps) {
       <Header />
       
       <div className="flex-1 space-y-5 overflow-y-auto custom-scrollbar pr-2 pb-4">
-        {/* Input source */}
+        {/* Source */}
       <div className="glass-panel rounded-card p-5">
         <h2 className={HEADING}>
-          <Upload className="w-5 h-5 text-primary" aria-hidden="true" /> Input source
+          <Upload className="w-5 h-5 text-primary" aria-hidden="true" /> Sticker source
         </h2>
         <label
           onDragEnter={onDragEnter}
@@ -138,7 +142,7 @@ export function LeftSidebar(props: LeftSidebarProps) {
               {previewUrl ? (
                 <>
                   <div className="absolute inset-0 overflow-hidden rounded-[8px] flex items-center justify-center p-1">
-                    {props.sourceFile.type.startsWith('video/') ? (
+                    {isVideoSource ? (
                       <video 
                         ref={videoRef}
                         src={previewUrl} 
@@ -186,13 +190,13 @@ export function LeftSidebar(props: LeftSidebarProps) {
         </label>
       </div>
 
-      {/* Parse settings */}
+      {/* Extraction settings */}
       <div className="glass-panel rounded-card p-5">
         <h2 className={HEADING}>
-          <Settings className="w-5 h-5 text-primary" aria-hidden="true" /> Parse settings
+          <Settings className="w-5 h-5 text-primary" aria-hidden="true" /> Extraction settings
         </h2>
         <div className="space-y-6">
-          {props.sourceFile && props.sourceFile.type.startsWith('video/') && videoDuration > 0 && (
+          {isVideoSource && videoDuration > 0 && (
             <fieldset>
               <div className="flex justify-between items-center mb-2">
                 <legend className="text-sm text-muted">Timeline</legend>
@@ -214,36 +218,40 @@ export function LeftSidebar(props: LeftSidebarProps) {
             </fieldset>
           )}
 
-          <fieldset>
-            <div className="flex justify-between items-center mb-2">
-              <legend className="text-sm text-muted">Frame rate (FPS)</legend>
-              <span className="text-xs font-mono text-muted">{props.fps} fps</span>
-            </div>
-            <div className="px-2 pt-1 pb-2">
-              <Slider
-                min={1}
-                max={60}
-                step={1}
-                value={props.fps}
-                onChange={(val) => props.setFps(val as number)}
-                styles={SLIDER_STYLES}
-              />
-            </div>
-          </fieldset>
+          {isVideoSource && (
+            <fieldset>
+              <div className="flex justify-between items-center mb-2">
+                <legend className="text-sm text-muted">Frame rate (FPS)</legend>
+                <span className="text-xs font-mono text-muted">{props.fps} fps</span>
+              </div>
+              <div className="px-2 pt-1 pb-2">
+                <Slider
+                  min={1}
+                  max={60}
+                  step={1}
+                  value={props.fps}
+                  onChange={(val) => props.setFps(val as number)}
+                  styles={SLIDER_STYLES}
+                />
+              </div>
+            </fieldset>
+          )}
 
           <div className="bg-surface-hover border border-hairline rounded-control p-3 flex justify-between items-center">
-            <span className="text-sm text-muted">Estimated frames</span>
-            <span className="text-base font-semibold text-foreground">{estimatedFrames}</span>
+            <span className="text-sm text-muted">{isVideoSource ? 'Estimated frames' : 'Source type'}</span>
+            <span className="text-base font-semibold text-foreground">
+              {isVideoSource ? estimatedFrames : props.sourceKind === 'gif' ? 'GIF' : '-'}
+            </span>
           </div>
 
           <button
             type="button"
             onClick={props.onProcessSource}
-            disabled={!props.sourceFile || props.isProcessing || estimatedFrames <= 0}
+            disabled={!canProcessSource}
             className="w-full min-h-[44px] bg-primary hover:bg-primary-hover text-white rounded-control font-semibold flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-[0_0_20px_var(--accent-glow)]"
           >
             {extracting ? <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" /> : null}
-            {extracting ? 'Extracting…' : 'Extract frames'}
+            {extracting ? 'Extracting...' : processLabel}
           </button>
         </div>
       </div>

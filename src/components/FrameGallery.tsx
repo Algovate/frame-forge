@@ -61,7 +61,7 @@ export function FrameGallery({
     <div className="glass-panel rounded-card p-5 flex-1 flex flex-col relative overflow-hidden">
       <div className="flex flex-wrap justify-between items-center gap-3 mb-5">
         <h2 className="text-lg font-semibold flex items-center gap-2">
-          <ImageIcon className="w-5 h-5 text-primary" aria-hidden="true" /> Frames
+          <ImageIcon className="w-5 h-5 text-primary" aria-hidden="true" /> Sticker frames
           {frames.length > 0 && (
             <span className="ml-1 font-mono text-xs text-muted tabular-nums">
               {selectedCount}
@@ -103,7 +103,7 @@ export function FrameGallery({
             </div>
 
             <div className="flex items-center gap-2 px-3 py-1 bg-surface-hover rounded-control border border-hairline sm:ml-2">
-              <span className="text-[11px] text-muted whitespace-nowrap">Similarity thresh:</span>
+              <span className="text-[11px] text-muted whitespace-nowrap">Similarity:</span>
               <div className="w-16 sm:w-24">
                 <Slider min={1} max={100} value={threshold} onChange={(v) => setThreshold(v as number)}
                   styles={SLIDER_STYLES_SM}
@@ -118,7 +118,7 @@ export function FrameGallery({
                   title="Find loop frames"
                 >
                   <Repeat className="w-3.5 h-3.5" />
-                  <span className="text-[11px] font-medium hidden xl:inline">Find Loops</span>
+                  <span className="text-[11px] font-medium hidden xl:inline">Loop</span>
                 </button>
                 <button 
                   onClick={() => onFindJumps?.(threshold)} 
@@ -126,7 +126,7 @@ export function FrameGallery({
                   title="Find jump frames"
                 >
                   <Zap className="w-3.5 h-3.5" />
-                  <span className="text-[11px] font-medium hidden xl:inline">Find Jumps</span>
+                  <span className="text-[11px] font-medium hidden xl:inline">Jumps</span>
                 </button>
                 <button 
                   onClick={() => onFindDuplicates?.(threshold)} 
@@ -134,7 +134,7 @@ export function FrameGallery({
                   title="Find duplicate frames"
                 >
                   <Copy className="w-3.5 h-3.5" />
-                  <span className="text-[11px] font-medium hidden xl:inline">Find Duplicates</span>
+                  <span className="text-[11px] font-medium hidden xl:inline">Duplicates</span>
                 </button>
               </div>
             </div>
@@ -158,7 +158,7 @@ export function FrameGallery({
       {frames.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center text-center rounded-control border-2 border-dashed border-hairline min-h-[420px] px-6">
           <ImageIcon className="w-16 h-16 mb-4 text-muted opacity-40" aria-hidden="true" />
-          <p className="text-lg text-foreground/80">No frames extracted yet</p>
+          <p className="text-lg text-foreground/80">No sticker frames yet</p>
           <p className="text-sm mt-2 text-muted">
             Load a video or GIF, then extract frames to begin.
           </p>
