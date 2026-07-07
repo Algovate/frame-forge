@@ -1,4 +1,4 @@
-import { Image as ImageIcon, Trash2, Check, Shuffle, ArrowRightToLine, ArrowLeftToLine, Undo2, Repeat, Zap, Copy } from 'lucide-react';
+import { Image as ImageIcon, Trash2, Check, Shuffle, ArrowRightToLine, ArrowLeftToLine, Undo2, Repeat, Zap, Copy, Pen } from 'lucide-react';
 import type { ExtractedFrame } from '../types';
 import { useState } from 'react';
 import Slider from 'rc-slider';
@@ -18,6 +18,7 @@ interface FrameGalleryProps {
   onReverseFrames?: () => void;
   onRemoveSubsequent?: (fromId: string) => void;
   onRemovePreceding?: (toId: string) => void;
+  onEditFrame?: (id: string) => void;
 }
 
 const CTRL =
@@ -43,6 +44,7 @@ export function FrameGallery({
   onReverseFrames,
   onRemoveSubsequent,
   onRemovePreceding,
+  onEditFrame,
 }: FrameGalleryProps) {
   const [threshold, setThreshold] = useState(65);
   const [lastClickedId, setLastClickedId] = useState<string | null>(null);
@@ -187,10 +189,21 @@ export function FrameGallery({
                   {String(index + 1).padStart(padWidth, '0')}
                 </span>
                 {frame.selected && (
-                  <span className="absolute top-1.5 right-1.5 grid place-items-center w-5 h-5 rounded-full bg-primary text-white shadow-[0_0_12px_var(--accent-glow)]">
+                  <span className="absolute top-1.5 right-1.5 grid place-items-center w-5 h-5 rounded-full bg-primary text-white shadow-[0_0_12px_var(--accent-glow)] pointer-events-none">
                     <Check className="w-3 h-3" strokeWidth={3} aria-hidden="true" />
                   </span>
                 )}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEditFrame?.(frame.id);
+                  }}
+                  className="absolute bottom-1.5 right-1.5 p-1.5 rounded-md bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80 backdrop-blur-sm z-10"
+                  title="Edit Frame"
+                >
+                  <Pen className="w-3.5 h-3.5" />
+                </button>
               </button>
             ))}
           </div>

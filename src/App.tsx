@@ -2,11 +2,13 @@ import { useCallback, useState } from 'react';
 import { LeftSidebar } from './components/LeftSidebar';
 import { RightSidebar } from './components/RightSidebar';
 import { FrameGallery } from './components/FrameGallery';
+import { FrameEditorModal } from './components/FrameEditorModal';
 import { ToastStack, type ToastItem, type ToastType } from './components/Toast';
 import { AmbientBackground } from './components/AmbientBackground';
 import type { ExtractedFrame, ProcessingPhase } from './types';
 import { extractFromGIF, extractFromVideo } from './utils/extractors';
-import { findDuplicateFrames, findLoopFrames, findJumpFrames, batchRemoveBackground } from './utils/processors';
+import { findDuplicateFrames, findLoopFrames, findJumpFrames, batchRemoveBackground, cropFrames } from './utils/processors';
+import type { PixelRect } from './utils/canvasEditor';
 import { exportZIP, exportGIF, exportSpriteSheet } from './utils/exporters';
 import { revokeFrameUrls } from './utils/media';
 import { Loader2 } from 'lucide-react';
@@ -29,6 +31,7 @@ function App() {
   const [phase, setPhase] = useState<ProcessingPhase>('idle');
   const [processMsg, setProcessMsg] = useState('');
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [editingFrameId, setEditingFrameId] = useState<string | null>(null);
 
   // Settings
   const [fps, setFps] = useState<number>(10);
@@ -216,6 +219,29 @@ function App() {
   };
   const selectAll = () => setFrames(frames.map((f) => ({ ...f, selected: true })));
 
+  const handleSaveEdit = (id: string, newDataUrl: string) => {
+    setFrames(frames.map(f => f.id === id ? { ...f, dataUrl: newDataUrl } : f));
+    setEditingFrameId(null);
+    pushToast('success', 'Frame saved');
+  };
+
+  const handleBatchCrop = (rect: PixelRect) => {
+    if (!rect.width || !rect.height) return;
+    const croppedCount = frames.filter((frame) => frame.selected).length;
+    if (croppedCount === 0) return pushToast('info', 'Select at least one frame first');
+    setEditingFrameId(null);
+    runProcessing('batch-cropping', 'Applying crop to selected frames...', async () => {
+      const updatedFrames = await cropFrames(frames, rect, true);
+      setFrames(updatedFrames);
+      pushToast('success', `Cropped ${croppedCount} selected frame${croppedCount === 1 ? '' : 's'}`);
+    }, 'Batch crop failed');
+  };
+
+  const editingFrameIndex = editingFrameId ? frames.findIndex((frame) => frame.id === editingFrameId) : -1;
+  const editingFrame = editingFrameIndex >= 0 ? frames[editingFrameIndex] : null;
+  const previousEditingFrame = editingFrameIndex > 0 ? frames[editingFrameIndex - 1] : null;
+  const nextEditingFrame = editingFrameIndex >= 0 && editingFrameIndex < frames.length - 1 ? frames[editingFrameIndex + 1] : null;
+
   return (
     <div className="h-screen flex flex-col overflow-hidden px-4 sm:px-6 lg:px-8 py-4 text-foreground relative">
       <AmbientBackground />
@@ -255,6 +281,7 @@ function App() {
             onReverseFrames={handleReverseFrames}
             onRemoveSubsequent={handleRemoveSubsequent}
             onRemovePreceding={handleRemovePreceding}
+            onEditFrame={setEditingFrameId}
           />
         </section>
 
@@ -279,6 +306,17 @@ function App() {
       </main>
 
       <ToastStack toasts={toasts} onDismiss={dismissToast} />
+
+      {editingFrameId && (
+        <FrameEditorModal
+          frame={editingFrame}
+          previousFrame={previousEditingFrame}
+          nextFrame={nextEditingFrame}
+          onClose={() => setEditingFrameId(null)}
+          onSave={handleSaveEdit}
+          onBatchCrop={handleBatchCrop}
+        />
+      )}
     </div>
   );
 }

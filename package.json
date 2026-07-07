@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -17,7 +19,9 @@
     "lucide-react": "^1.23.0",
     "rc-slider": "^11.1.9",
     "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "react-colorful": "^5.7.0",
+    "react-dom": "^19.2.7",
+    "react-image-crop": "^11.1.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.2",
@@ -26,10 +30,12 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
     "autoprefixer": "^10.5.2",
+    "jsdom": "^29.1.1",
     "oxlint": "^1.71.0",
     "postcss": "^8.5.16",
     "tailwindcss": "^4.3.2",
     "typescript": "~6.0.2",
-    "vite": "^8.1.1"
+    "vite": "^8.1.1",
+    "vitest": "^4.1.10"
   }
 }

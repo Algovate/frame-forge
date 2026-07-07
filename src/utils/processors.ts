@@ -1,6 +1,7 @@
 import { removeBackground } from '@imgly/background-removal';
 import type { ExtractedFrame } from '../types';
 import { loadImage } from './media';
+import { cropToCanvas, type PixelRect } from './canvasEditor';
 
 const DEDUP_THUMB = 64;
 const DEDUP_PIXEL_THRESHOLD = 30;
@@ -164,3 +165,15 @@ export const batchRemoveBackground = async (
   }
   return newFrames;
 };
+
+/** Apply a pixel-space crop to frames from the editor batch action.
+ *  Reuses loadImage so a corrupt/revoked source rejects instead of hanging. */
+export const cropFrames = async (frames: ExtractedFrame[], rect: PixelRect, selectedOnly = true): Promise<ExtractedFrame[]> =>
+  Promise.all(
+    frames.map(async (frame) => {
+      if (selectedOnly && !frame.selected) return frame;
+      const img = await loadImage(frame.dataUrl);
+      const cropped = cropToCanvas(img, rect);
+      return cropped ? { ...frame, dataUrl: cropped.toDataURL('image/png') } : frame;
+    }),
+  );
