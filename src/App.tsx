@@ -11,6 +11,7 @@ import { findDuplicateFrames, findLoopFrames, findJumpFrames, batchRemoveBackgro
 import type { PixelRect } from './utils/canvasEditor';
 import { exportZIP, exportGIF, exportSpriteSheet } from './utils/exporters';
 import { classifyStickerSource, revokeFrameUrls } from './utils/media';
+import { WECHAT_STICKER_PRESET } from './utils/wechat';
 import { Loader2 } from 'lucide-react';
 
 function App() {
@@ -24,9 +25,9 @@ function App() {
 
   // Settings
   const [fps, setFps] = useState<number>(10);
-  const [gifDelay, setGifDelay] = useState<number>(100);
-  const [exportWidth, setExportWidth] = useState<number>(0);
-  const [exportHeight, setExportHeight] = useState<number>(0);
+  const [gifDelay, setGifDelay] = useState<number>(WECHAT_STICKER_PRESET.gifDelay);
+  const [exportWidth, setExportWidth] = useState<number>(WECHAT_STICKER_PRESET.width);
+  const [exportHeight, setExportHeight] = useState<number>(WECHAT_STICKER_PRESET.height);
   const [startTime, setStartTime] = useState<number>(0);
   const [endTime, setEndTime] = useState<number>(-1);
 
@@ -183,8 +184,10 @@ function App() {
   const handleExportGIF = () => {
     if (!frames.some((f) => f.selected)) return pushToast('info', 'Select at least one frame first');
     runProcessing('exporting', 'Encoding GIF...', async () => {
-      await exportGIF(frames, gifDelay, exportWidth, exportHeight);
-      pushToast('success', 'Animated GIF ready');
+      const result = await exportGIF(frames, gifDelay, exportWidth, exportHeight);
+      if (result) {
+        pushToast('success', `GIF ready (${Math.round(result.sizeBytes / 1024)} KB)`);
+      }
     }, 'GIF export failed');
   };
   const handleExportSpriteSheet = () => {

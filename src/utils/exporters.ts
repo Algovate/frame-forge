@@ -2,6 +2,12 @@ import JSZip from 'jszip';
 import GIF from 'gif.js';
 import type { ExtractedFrame } from '../types';
 import { loadImage, resizeImage } from './media';
+import { fitImageToCanvas } from './canvasFit';
+
+export interface ExportResult {
+  filename: string;
+  sizeBytes: number;
+}
 
 const downloadBlob = (blob: Blob, filename: string) => {
   const url = URL.createObjectURL(blob);
@@ -32,9 +38,14 @@ export const exportZIP = async (frames: ExtractedFrame[], w: number, h: number) 
   downloadBlob(content, 'frames.zip');
 };
 
-export const exportGIF = async (frames: ExtractedFrame[], delay: number, w: number, h: number) => {
+export const exportGIF = async (
+  frames: ExtractedFrame[],
+  delay: number,
+  w: number,
+  h: number,
+): Promise<ExportResult | null> => {
   const selectedFrames = getSelected(frames);
-  if (selectedFrames.length === 0) return;
+  if (selectedFrames.length === 0) return null;
 
   // Only set explicit dimensions when the user asked for a size; otherwise let
   // gif.js derive the canvas from the frames (passing width:0 is ambiguous).
@@ -49,22 +60,25 @@ export const exportGIF = async (frames: ExtractedFrame[], delay: number, w: numb
   }
   const gif = new GIF(opts);
 
-  const maybeResize = (dataUrl: string) => (w && h ? resizeImage(dataUrl, w, h) : dataUrl);
+  const maybeFit = (dataUrl: string) => (w && h ? fitImageToCanvas(dataUrl, w, h, 'contain') : dataUrl);
 
   for (const frame of selectedFrames) {
-    const img = await loadImage(await maybeResize(frame.dataUrl));
+    const img = await loadImage(await maybeFit(frame.dataUrl));
     gif.addFrame(img, { delay });
   }
 
-  return new Promise<void>((resolve, reject) => {
+  return new Promise<ExportResult>((resolve, reject) => {
+    let timeoutId: number;
     gif.on('finished', (blob: Blob) => {
-      downloadBlob(blob, 'animated.gif');
-      resolve();
+      window.clearTimeout(timeoutId);
+      const filename = 'wechat-sticker.gif';
+      downloadBlob(blob, filename);
+      resolve({ filename, sizeBytes: blob.size });
     });
     gif.render();
     // gif.js has no error event surface we can rely on; guard with a timeout
     // so a stalled render rejects instead of hanging the caller.
-    window.setTimeout(() => reject(new Error('GIF encoding timed out')), 120000);
+    timeoutId = window.setTimeout(() => reject(new Error('GIF encoding timed out')), 120000);
   });
 };
 

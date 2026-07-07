@@ -34,15 +34,15 @@ interface RightSidebarProps {
  *  the per-format fieldset, and the active export button. Add a format here
  *  and it appears everywhere. */
 const EXPORT_TABS = [
-  { id: 'zip', label: 'ZIP', icon: Archive, title: 'Export ZIP', hint: 'All frames, lossless' },
-  { id: 'gif', label: 'GIF', icon: Film, title: 'Export GIF', hint: 'Uses delay above' },
-  { id: 'sprite', label: 'Sprite', icon: LayoutGrid, title: 'Export Sprite Sheet', hint: 'Uses columns / padding' },
+  { id: 'gif', label: 'GIF', icon: Film, title: 'Export WeChat GIF', hint: 'WeChat 240 x 240' },
+  { id: 'zip', label: 'ZIP', icon: Archive, title: 'Export ZIP', hint: 'Advanced frame archive' },
+  { id: 'sprite', label: 'Sprite', icon: LayoutGrid, title: 'Export Sprite Sheet', hint: 'Advanced sheet export' },
 ] as const;
 
 type ExportTabId = (typeof EXPORT_TABS)[number]['id'];
 
 export function RightSidebar(props: RightSidebarProps) {
-  const [exportTab, setExportTab] = useState<ExportTabId>('zip');
+  const [exportTab, setExportTab] = useState<ExportTabId>('gif');
 
   if (props.frames.length === 0) return null;
 
@@ -62,14 +62,14 @@ export function RightSidebar(props: RightSidebarProps) {
           <Film className="w-5 h-5 text-primary" aria-hidden="true" /> Preview
         </h2>
         <div className="relative aspect-[4/3] sm:aspect-video w-full min-h-[200px]">
-          <AnimationPreview frames={props.frames} />
+          <AnimationPreview frames={props.frames} delayMs={props.gifDelay} />
         </div>
       </div>
 
-      {/* Pro utilities */}
+      {/* Image cleanup */}
       <div className="glass-panel rounded-card p-5">
         <h2 className={HEADING}>
-          <Wand2 className="w-5 h-5 text-dedupe" aria-hidden="true" /> Pro utilities
+          <Wand2 className="w-5 h-5 text-dedupe" aria-hidden="true" /> Image cleanup
         </h2>
         <div className="space-y-2">
           <button
