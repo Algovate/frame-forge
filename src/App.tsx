@@ -5,14 +5,13 @@ import { FrameGallery } from './components/FrameGallery';
 import { FrameEditorModal } from './components/FrameEditorModal';
 import { ToastStack, type ToastItem, type ToastType } from './components/Toast';
 import { AmbientBackground } from './components/AmbientBackground';
-import type { ExtractedFrame, ProcessingPhase } from './types';
+import type { ExtractedFrame, MattingMode, ProcessingPhase } from './types';
 import { extractFromGIF, extractFromVideo } from './utils/extractors';
 import { findDuplicateFrames, findLoopFrames, findJumpFrames, batchRemoveBackground, cropFrames } from './utils/processors';
 import type { PixelRect } from './utils/canvasEditor';
 import { exportZIP, exportGIF, exportSpriteSheet } from './utils/exporters';
 import { classifyStickerSource, revokeFrameUrls } from './utils/media';
 import { WECHAT_STICKER_PRESET, getWechatReadiness } from './utils/wechat';
-import { DEFAULT_CAPTION, applyCaptionToFrames } from './utils/captions';
 import { Loader2 } from 'lucide-react';
 
 function App() {
@@ -31,8 +30,8 @@ function App() {
   const [exportHeight, setExportHeight] = useState<number>(WECHAT_STICKER_PRESET.height);
   const [startTime, setStartTime] = useState<number>(0);
   const [endTime, setEndTime] = useState<number>(-1);
-  const [caption, setCaption] = useState(DEFAULT_CAPTION);
   const [lastGifSizeBytes, setLastGifSizeBytes] = useState<number | undefined>();
+  const [mattingMode, setMattingMode] = useState<MattingMode>('edge-key');
 
   // Sprite Sheet Settings
   const [spriteCols, setSpriteCols] = useState<number>(0);
@@ -177,8 +176,8 @@ function App() {
   };
 
   const handleRemoveBackgrounds = () =>
-    runProcessing('matting', 'Loading AI Model & Matting...', async () => {
-      const next = await batchRemoveBackground(frames, (msg, updatedFrames) => {
+    runProcessing('matting', mattingMode === 'edge-key' ? 'Cleaning frames...' : 'Loading AI Model & Matting...', async () => {
+      const next = await batchRemoveBackground(frames, mattingMode, (msg, updatedFrames) => {
         setProcessMsg(msg);
         setFrames([...updatedFrames]);
       });
@@ -197,10 +196,7 @@ function App() {
   const handleExportGIF = () => {
     if (!frames.some((f) => f.selected)) return pushToast('info', 'Select at least one frame first');
     runProcessing('exporting', 'Encoding GIF...', async () => {
-      const exportFrames = caption.enabled && caption.text.trim()
-        ? await applyCaptionToFrames(frames, caption)
-        : frames;
-      const result = await exportGIF(exportFrames, gifDelay, exportWidth, exportHeight);
+      const result = await exportGIF(frames, gifDelay, exportWidth, exportHeight);
       if (result) {
         setLastGifSizeBytes(result.sizeBytes);
         pushToast('success', `GIF ready (${Math.round(result.sizeBytes / 1024)} KB)`);
@@ -240,22 +236,21 @@ function App() {
     setLastGifSizeBytes(undefined);
   };
 
-  const handleApplyCaption = () => {
-    if (!caption.enabled || !caption.text.trim()) return pushToast('info', 'Enter caption text first');
-    runProcessing('exporting', 'Rendering caption...', async () => {
-      const updatedFrames = await applyCaptionToFrames(frames, caption);
-      setFrames(updatedFrames);
-      setLastGifSizeBytes(undefined);
-      setCaption((prev) => ({ ...prev, enabled: false }));
-      pushToast('success', 'Caption applied to selected frames');
-    }, 'Caption rendering failed');
-  };
-
-  const handleSaveEdit = (id: string, newDataUrl: string) => {
-    setFrames(frames.map(f => f.id === id ? { ...f, dataUrl: newDataUrl } : f));
+  const handleSaveEdit = (
+    id: string,
+    newDataUrl: string,
+    meta?: { width?: number; height?: number; close?: boolean; message?: string },
+  ) => {
+    setFrames(frames.map(f => f.id === id ? {
+      ...f,
+      dataUrl: newDataUrl,
+      sourceDataUrl: undefined,
+      width: meta?.width ?? f.width,
+      height: meta?.height ?? f.height,
+    } : f));
     setLastGifSizeBytes(undefined);
-    setEditingFrameId(null);
-    pushToast('success', 'Frame saved');
+    if (meta?.close !== false) setEditingFrameId(null);
+    pushToast('success', meta?.message ?? 'Frame saved');
   };
 
   const handleBatchCrop = (rect: PixelRect) => {
@@ -344,9 +339,8 @@ function App() {
           setSpriteCols={setSpriteCols}
           spritePadding={spritePadding}
           setSpritePadding={setSpritePadding}
-          caption={caption}
-          setCaption={setCaption}
-          onApplyCaption={handleApplyCaption}
+          mattingMode={mattingMode}
+          setMattingMode={setMattingMode}
           readiness={readiness}
           onRemoveBackgrounds={handleRemoveBackgrounds}
           onExportZIP={handleExportZIP}

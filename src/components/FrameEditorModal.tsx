@@ -48,7 +48,7 @@ interface FrameEditorModalProps {
   previousFrame?: ExtractedFrame | null;
   nextFrame?: ExtractedFrame | null;
   onClose: () => void;
-  onSave: (id: string, newUrl: string) => void;
+  onSave: (id: string, newUrl: string, meta?: { width?: number; height?: number; close?: boolean; message?: string }) => void;
   onBatchCrop?: (rect: PixelRect) => void;
 }
 
@@ -398,7 +398,16 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
     const ctx = canvas.getContext('2d');
     ctx?.drawImage(cropped, 0, 0);
 
-    saveState(canvas.toDataURL('image/png'));
+    const dataUrl = canvas.toDataURL('image/png');
+    saveState(dataUrl, false);
+    if (frame) {
+      onSave(frame.id, dataUrl, {
+        width: cropped.width,
+        height: cropped.height,
+        close: false,
+        message: 'Crop applied',
+      });
+    }
     setCrop(undefined);
   };
 
@@ -725,7 +734,10 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
   const handleSave = () => {
     if (!frame || !canvasRef.current) return;
     setIsDirty(false);
-    onSave(frame.id, canvasRef.current.toDataURL('image/png'));
+    onSave(frame.id, canvasRef.current.toDataURL('image/png'), {
+      width: canvasRef.current.width,
+      height: canvasRef.current.height,
+    });
   };
 
   const resetView = () => {

@@ -1,21 +1,21 @@
 export interface ExtractedFrame {
   id: string;
   dataUrl: string;
+  /** Original (pre-matte) image URL. Matting always re-runs from this so repeated
+   *  passes stay idempotent; a manual editor edit clears it (the edited image
+   *  becomes the new matting source). Invariant: pixel-aligned with `dataUrl`. */
+  sourceDataUrl?: string;
+  /** Decoded pixel dimensions of `dataUrl`. Any transform that changes `dataUrl`'s
+   *  dimensions (extract, crop, editor save) must update both fields together. */
+  width?: number;
+  height?: number;
   time: number;
   selected: boolean;
 }
 
 export type StickerSourceKind = 'gif' | 'video' | 'static-image';
 
-export interface CaptionSettings {
-  enabled: boolean;
-  text: string;
-  fontSize: number;
-  fillColor: string;
-  strokeColor: string;
-  strokeWidth: number;
-  position: 'top' | 'middle' | 'bottom';
-}
+export type MattingMode = 'edge-key' | 'conservative' | 'balanced';
 
 export interface WechatReadiness {
   selectedCount: number;

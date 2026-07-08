@@ -4,10 +4,9 @@ import {
   Download,
   Archive,
   LayoutGrid,
-  Type,
   type LucideIcon,
 } from 'lucide-react';
-import type { CaptionSettings, ExtractedFrame, WechatReadiness } from '../types';
+import type { ExtractedFrame, MattingMode, WechatReadiness } from '../types';
 import { AnimationPreview } from './AnimationPreview';
 import { HEADING, FIELD } from './ui';
 
@@ -24,9 +23,8 @@ interface RightSidebarProps {
   setSpriteCols: (cols: number) => void;
   spritePadding: number;
   setSpritePadding: (pad: number) => void;
-  caption: CaptionSettings;
-  setCaption: (caption: CaptionSettings) => void;
-  onApplyCaption: () => void;
+  mattingMode: MattingMode;
+  setMattingMode: (mode: MattingMode) => void;
   readiness: WechatReadiness;
   onRemoveBackgrounds: () => void;
   onExportZIP: () => void;
@@ -56,120 +54,41 @@ export function RightSidebar(props: RightSidebarProps) {
         </div>
       </div>
 
-      {/* Caption */}
-      <div className="glass-panel rounded-card p-4">
-        <h2 className={HEADING}>
-          <Type className="w-5 h-5 text-primary" aria-hidden="true" /> Caption
-        </h2>
-        <div className="space-y-3">
-          <label className="flex items-center gap-2 text-sm text-muted">
-            <input
-              type="checkbox"
-              checked={props.caption.enabled}
-              onChange={(e) => props.setCaption({ ...props.caption, enabled: e.target.checked })}
-              className="accent-primary"
-            />
-            Render caption on export
-          </label>
-
-          <input
-            value={props.caption.text}
-            onChange={(e) => props.setCaption({ ...props.caption, text: e.target.value })}
-            placeholder="Sticker text"
-            className={FIELD}
-          />
-
-          <div className="grid grid-cols-2 gap-2">
-            <label htmlFor="caption-size" className="block">
-              <span className="block text-[11px] text-muted mb-1">Size</span>
-              <input
-                id="caption-size"
-                type="number"
-                min={12}
-                max={72}
-                value={props.caption.fontSize}
-                onChange={(e) => props.setCaption({ ...props.caption, fontSize: Number(e.target.value) })}
-                className={FIELD}
-              />
-            </label>
-            <label htmlFor="caption-stroke" className="block">
-              <span className="block text-[11px] text-muted mb-1">Stroke</span>
-              <input
-                id="caption-stroke"
-                type="number"
-                min={0}
-                max={12}
-                value={props.caption.strokeWidth}
-                onChange={(e) => props.setCaption({ ...props.caption, strokeWidth: Number(e.target.value) })}
-                className={FIELD}
-              />
-            </label>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <label htmlFor="caption-fill" className="block">
-              <span className="block text-[11px] text-muted mb-1">Text</span>
-              <input
-                id="caption-fill"
-                type="color"
-                value={props.caption.fillColor}
-                onChange={(e) => props.setCaption({ ...props.caption, fillColor: e.target.value })}
-                className="h-10 w-full rounded-control border border-hairline bg-surface-hover p-1"
-              />
-            </label>
-            <label htmlFor="caption-outline" className="block">
-              <span className="block text-[11px] text-muted mb-1">Outline</span>
-              <input
-                id="caption-outline"
-                type="color"
-                value={props.caption.strokeColor}
-                onChange={(e) => props.setCaption({ ...props.caption, strokeColor: e.target.value })}
-                className="h-10 w-full rounded-control border border-hairline bg-surface-hover p-1"
-              />
-            </label>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2">
-            {(['top', 'middle', 'bottom'] as const).map((position) => (
-              <button
-                key={position}
-                type="button"
-                onClick={() => props.setCaption({ ...props.caption, position })}
-                className={`min-h-[34px] rounded-control border text-xs capitalize transition-colors ${
-                  props.caption.position === position
-                    ? 'border-primary text-primary bg-primary/10'
-                    : 'border-hairline text-muted hover:text-foreground'
-                }`}
-              >
-                {position}
-              </button>
-            ))}
-          </div>
-
-          <button
-            type="button"
-            onClick={props.onApplyCaption}
-            disabled={props.isProcessing}
-            className="w-full min-h-[40px] rounded-control bg-primary text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            Apply to selected frames
-          </button>
-        </div>
-      </div>
-
       {/* Image cleanup */}
       <div className="glass-panel rounded-card p-4">
         <h2 className={HEADING}>
           <Wand2 className="w-5 h-5 text-dedupe" aria-hidden="true" /> Image cleanup
         </h2>
-        <div className="space-y-2">
+        <div className="space-y-3">
+          <div className="grid grid-cols-3 gap-2" role="group" aria-label="Matting mode">
+            {[
+              { id: 'edge-key' as const, label: 'Edge key' },
+              { id: 'conservative' as const, label: 'Conservative' },
+              { id: 'balanced' as const, label: 'Balanced' },
+            ].map((mode) => (
+              <button
+                key={mode.id}
+                type="button"
+                onClick={() => props.setMattingMode(mode.id)}
+                aria-pressed={props.mattingMode === mode.id}
+                disabled={props.isProcessing}
+                className={`min-h-[34px] rounded-control border text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                  props.mattingMode === mode.id
+                    ? 'border-matte text-matte bg-matte/10'
+                    : 'border-hairline text-muted hover:text-foreground hover:bg-surface-hover'
+                }`}
+              >
+                {mode.label}
+              </button>
+            ))}
+          </div>
           <button
             type="button"
             onClick={props.onRemoveBackgrounds}
             disabled={props.isProcessing}
             className="w-full min-h-[44px] bg-matte/10 text-matte hover:bg-matte/20 border border-matte/30 rounded-control text-sm font-medium flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            <Wand2 className="w-4 h-4" aria-hidden="true" /> AI batch matting
+            <Wand2 className="w-4 h-4" aria-hidden="true" /> Batch cleanup
           </button>
         </div>
       </div>
@@ -180,16 +99,10 @@ export function RightSidebar(props: RightSidebarProps) {
           <Download className="w-5 h-5 text-primary" aria-hidden="true" /> WeChat export
         </h2>
         <div className="space-y-3">
-          <div className="rounded-control border border-hairline bg-surface-hover/70 p-3">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-sm font-medium text-foreground">WeChat GIF preset</span>
-              <span className="font-mono text-xs text-primary">240 x 240</span>
-            </div>
-            <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
-              <Metric label="Frames" value={props.readiness.selectedCount} />
-              <Metric label="Duration" value={`${(props.readiness.durationMs / 1000).toFixed(1)}s`} />
-              <Metric label="Last GIF" value={formatBytes(props.readiness.actualSizeBytes)} />
-            </div>
+          <div className="grid grid-cols-3 gap-2 text-xs">
+            <Metric label="Frames" value={props.readiness.selectedCount} />
+            <Metric label="Duration" value={`${(props.readiness.durationMs / 1000).toFixed(1)}s`} />
+            <Metric label="Last GIF" value={formatBytes(props.readiness.actualSizeBytes)} />
           </div>
 
           <label htmlFor="gif-delay" className="block">

@@ -181,7 +181,8 @@ export function FrameGallery({
                 onKeyDown={(event) => handleFrameKeyDown(event, frame.id)}
                 aria-pressed={frame.selected}
                 aria-label={`Frame ${index + 1}${frame.selected ? ', selected' : ', not selected'}`}
-                className={`group relative aspect-video rounded-control overflow-hidden border cursor-pointer transition-all duration-150 frame-checker ${
+                style={{ aspectRatio: `${frame.width ?? 16} / ${frame.height ?? 9}` }}
+                className={`group relative rounded-control overflow-hidden border cursor-pointer transition-all duration-150 frame-checker ${
                   frame.selected
                     ? 'border-primary ring-2 ring-primary/60 scale-[1.02] shadow-[0_8px_24px_-12px_var(--accent-glow-strong)]'
                     : 'border-hairline hover:border-primary/50 hover:scale-[1.01]'

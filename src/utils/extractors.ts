@@ -58,6 +58,8 @@ export const extractFromGIF = async (
     extracted.push({
       id: `gif_${i}`,
       dataUrl: canvas.toDataURL('image/png'),
+      width: canvas.width,
+      height: canvas.height,
       time: currentTime,
       selected: true,
     });
@@ -164,7 +166,7 @@ export const extractFromVideo = async (
     for (let i = 0; i < frameCount; i++) {
       const t = clampedStart + i * timeStep;
       const dataUrl = await captureFrame(t);
-      extracted.push({ id: `vid_${i}`, dataUrl, time: t, selected: true });
+      extracted.push({ id: `vid_${i}`, dataUrl, width: canvas.width, height: canvas.height, time: t, selected: true });
       if (onProgress) onProgress([...extracted]);
       await new Promise((r) => setTimeout(r, 0)); // yield to UI
     }
