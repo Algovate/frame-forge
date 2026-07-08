@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { HexColorPicker } from 'react-colorful';
 import ReactCrop, { type Crop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
@@ -65,22 +66,22 @@ type ShapeMode = 'stroke' | 'fill' | 'both';
  *  palette (primary / matte / dedupe / destructive) plus neutral inks. */
 const COLOR_PRESETS = ['#ef4444', '#ffffff', '#000000', '#6366f1', '#38bdf8', '#8b5cf6', '#f59e0b'];
 
-const DRAW_TOOLS: { id: Tool; icon: typeof Pen; label: string }[] = [
-  { id: 'pen', icon: Pen, label: 'Pen' },
-  { id: 'eraser', icon: Eraser, label: 'Eraser' },
-  { id: 'fill', icon: PaintBucket, label: 'Fill' },
-  { id: 'replace', icon: Palette, label: 'Replace color' },
-  { id: 'eyedropper', icon: Pipette, label: 'Eyedropper' },
-  { id: 'rect', icon: Square, label: 'Rectangle' },
-  { id: 'circle', icon: CircleIcon, label: 'Ellipse' },
-  { id: 'soften', icon: Wand2, label: 'Edge soften' },
+const DRAW_TOOLS: { id: Tool; icon: typeof Pen; labelKey: string }[] = [
+  { id: 'pen', icon: Pen, labelKey: 'editor.tool_pen' },
+  { id: 'eraser', icon: Eraser, labelKey: 'editor.tool_eraser' },
+  { id: 'fill', icon: PaintBucket, labelKey: 'editor.tool_fill' },
+  { id: 'replace', icon: Palette, labelKey: 'editor.tool_replace' },
+  { id: 'eyedropper', icon: Pipette, labelKey: 'editor.tool_eyedropper' },
+  { id: 'rect', icon: Square, labelKey: 'editor.tool_rect' },
+  { id: 'circle', icon: CircleIcon, labelKey: 'editor.tool_circle' },
+  { id: 'soften', icon: Wand2, labelKey: 'editor.tool_soften' },
 ];
 
-const BLEND_MODES: { id: BlendMode; label: string }[] = [
-  { id: 'source-over', label: 'Normal' },
-  { id: 'overlay', label: 'Overlay' },
-  { id: 'color-dodge', label: 'Dodge' },
-  { id: 'color-burn', label: 'Burn' },
+const BLEND_MODES: { id: BlendMode; labelKey: string }[] = [
+  { id: 'source-over', labelKey: 'editor.blend_normal' },
+  { id: 'overlay', labelKey: 'editor.blend_overlay' },
+  { id: 'color-dodge', labelKey: 'editor.blend_dodge' },
+  { id: 'color-burn', labelKey: 'editor.blend_burn' },
 ];
 
 const CROP_INPUT_CLASS =
@@ -130,6 +131,7 @@ function SliderRow({
 }
 
 export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onSave, onBatchCrop, onSplitGrid }: FrameEditorModalProps) {
+  const { t } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
   const blurredCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -174,10 +176,10 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
   const [canvasDimensions, setCanvasDimensions] = useState({ width: 0, height: 0 });
 
   const requestClose = useCallback(() => {
-    if (!isDirty || window.confirm('Discard unsaved edits?')) {
+    if (!isDirty || window.confirm(t('editor.discard'))) {
       onClose();
     }
-  }, [isDirty, onClose]);
+  }, [isDirty, onClose, t]);
 
   // Dialog: Escape to close + focus the active tool on open + simple Tab trap.
   useEffect(() => {
@@ -430,7 +432,7 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
         width: cropped.width,
         height: cropped.height,
         close: false,
-        message: 'Crop applied',
+        message: t('editor.apply_crop'),
       });
     }
     setCrop(undefined);
@@ -804,10 +806,10 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
 
   const gridSplitContent = onSplitGrid ? (
     <div className="space-y-3">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted/70">Grid split</p>
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted/70">{t('editor.grid_split')}</p>
       <div className="grid grid-cols-3 gap-2">
         <label className="space-y-1">
-          <span className="block text-[10px] font-semibold uppercase tracking-wider text-muted/70">Rows</span>
+          <span className="block text-[10px] font-semibold uppercase tracking-wider text-muted/70">{t('editor.rows')}</span>
           <input
             type="number"
             min={1}
@@ -818,7 +820,7 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
           />
         </label>
         <label className="space-y-1">
-          <span className="block text-[10px] font-semibold uppercase tracking-wider text-muted/70">Cols</span>
+          <span className="block text-[10px] font-semibold uppercase tracking-wider text-muted/70">{t('editor.cols')}</span>
           <input
             type="number"
             min={1}
@@ -829,7 +831,7 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
           />
         </label>
         <label className="space-y-1">
-          <span className="block text-[10px] font-semibold uppercase tracking-wider text-muted/70">Pad</span>
+          <span className="block text-[10px] font-semibold uppercase tracking-wider text-muted/70">{t('editor.pad')}</span>
           <input
             type="number"
             min={0}
@@ -845,10 +847,10 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
         onClick={handleSplitGrid}
         className="w-full min-h-[40px] rounded-control bg-primary hover:bg-primary-hover text-white text-sm font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-[0_0_16px_var(--accent-glow)]"
       >
-        <Grid3X3 className="w-4 h-4" aria-hidden="true" /> Split into {gridFrameCount} frames
+        <Grid3X3 className="w-4 h-4" aria-hidden="true" /> {t('editor.split_frames', { count: gridFrameCount })}
       </button>
       <p className="text-xs text-muted leading-relaxed">
-        Replaces this frame with grid cells from the current canvas.
+        {t('editor.split_desc')}
       </p>
     </div>
   ) : null;
@@ -858,7 +860,7 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
       {showColor && (
         <div className="space-y-3">
           <div className="flex items-center gap-2 relative">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted/70 shrink-0">Color</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted/70 shrink-0">{t('editor.color')}</span>
             <button
               type="button"
               aria-label="Open color picker"
@@ -904,25 +906,25 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
       )}
 
       {showSize && (
-        <SliderRow label="Brush size" value={brushSize} suffix="px" min={1} max={100} step={1} onChange={setBrushSize} />
+        <SliderRow label={t('editor.brush_size')} value={brushSize} suffix="px" min={1} max={100} step={1} onChange={setBrushSize} />
       )}
 
       {showHardness && (
-        <SliderRow label="Hardness" value={brushHardness} suffix="%" min={0} max={100} step={1} onChange={setBrushHardness} />
+        <SliderRow label={t('editor.hardness')} value={brushHardness} suffix="%" min={0} max={100} step={1} onChange={setBrushHardness} />
       )}
 
       {showOpacity && (
-        <SliderRow label="Opacity" value={brushOpacity} suffix="%" min={0} max={100} step={1} onChange={setBrushOpacity} />
+        <SliderRow label={t('editor.opacity')} value={brushOpacity} suffix="%" min={0} max={100} step={1} onChange={setBrushOpacity} />
       )}
 
       {(activeTool === 'rect' || activeTool === 'circle') && (
         <fieldset>
-          <legend className="text-[11px] font-semibold uppercase tracking-wider text-muted/70 mb-2">Shape</legend>
+          <legend className="text-[11px] font-semibold uppercase tracking-wider text-muted/70 mb-2">{t('editor.shape')}</legend>
           <div className="grid grid-cols-3 gap-1">
             {[
-              { id: 'stroke' as const, label: 'Stroke' },
-              { id: 'fill' as const, label: 'Fill' },
-              { id: 'both' as const, label: 'Both' },
+              { id: 'stroke' as const, label: t('editor.stroke') },
+              { id: 'fill' as const, label: t('editor.fill') },
+              { id: 'both' as const, label: t('editor.both') },
             ].map((item) => (
               <button
                 key={item.id}
@@ -943,12 +945,12 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
       )}
 
       {showTolerance && (
-        <SliderRow label="Tolerance" value={tolerance} min={0} max={255} step={1} onChange={setTolerance} />
+        <SliderRow label={t('editor.tolerance')} value={tolerance} min={0} max={255} step={1} onChange={setTolerance} />
       )}
 
       {showBlend && (
         <fieldset>
-          <legend className="text-[11px] font-semibold uppercase tracking-wider text-muted/70 mb-2">Blend mode</legend>
+          <legend className="text-[11px] font-semibold uppercase tracking-wider text-muted/70 mb-2">{t('editor.blend_mode')}</legend>
           <div className="grid grid-cols-2 gap-1">
             {BLEND_MODES.map((m) => (
               <button
@@ -962,7 +964,7 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
                     : 'bg-surface-hover text-muted hover:text-foreground'
                 }`}
               >
-                {m.label}
+                {t(m.labelKey)}
               </button>
             ))}
           </div>
@@ -971,16 +973,16 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
 
       {activeTool === 'crop' && (
         <div className="space-y-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted/70">Crop</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted/70">{t('editor.crop')}</p>
           <div className="grid grid-cols-3 gap-1">
             <button type="button" onClick={setFullCrop} className="min-h-[32px] rounded-control bg-surface-hover text-xs font-medium text-muted hover:text-foreground transition-colors">
-              Full
+              {t('editor.full')}
             </button>
             <button type="button" onClick={centerCrop} className="min-h-[32px] rounded-control bg-surface-hover text-xs font-medium text-muted hover:text-foreground transition-colors">
-              Center
+              {t('editor.center')}
             </button>
             <button type="button" onClick={squareCrop} className="min-h-[32px] rounded-control bg-surface-hover text-xs font-medium text-muted hover:text-foreground transition-colors">
-              1:1
+              {t('editor.ratio_1_1')}
             </button>
           </div>
           {cropPixelRect && (
@@ -1009,7 +1011,7 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
                 onClick={handleApplyCrop}
                 className="w-full min-h-[40px] rounded-control bg-primary hover:bg-primary-hover text-white text-sm font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-[0_0_16px_var(--accent-glow)]"
               >
-                <CheckIcon className="w-4 h-4" aria-hidden="true" /> Apply crop
+                <CheckIcon className="w-4 h-4" aria-hidden="true" /> {t('editor.apply_crop')}
               </button>
               {onBatchCrop && (
                 <button
@@ -1020,13 +1022,13 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
                   }}
                   className="w-full min-h-[40px] rounded-control border border-hairline text-matte hover:bg-matte/10 text-sm font-medium flex items-center justify-center gap-1.5 transition-colors"
                 >
-                  <Layers className="w-4 h-4" aria-hidden="true" /> Apply to selected frames
+                  <Layers className="w-4 h-4" aria-hidden="true" /> {t('editor.apply_selected')}
                 </button>
               )}
             </>
           ) : (
             <p className="text-xs text-muted leading-relaxed">
-              Drag on the canvas to select a crop region.
+              {t('editor.crop_desc')}
             </p>
           )}
         </div>
@@ -1036,12 +1038,12 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
 
       {(previousFrame || nextFrame) && (
         <fieldset className="space-y-3">
-          <legend className="text-[11px] font-semibold uppercase tracking-wider text-muted/70">Onion skin</legend>
+          <legend className="text-[11px] font-semibold uppercase tracking-wider text-muted/70">{t('editor.onion_skin')}</legend>
           <div className="grid grid-cols-3 gap-1">
             {[
-              { id: 'none' as const, label: 'Off', disabled: false },
-              { id: 'previous' as const, label: 'Prev', disabled: !previousFrame },
-              { id: 'next' as const, label: 'Next', disabled: !nextFrame },
+              { id: 'none' as const, label: t('editor.off'), disabled: false },
+              { id: 'previous' as const, label: t('editor.prev'), disabled: !previousFrame },
+              { id: 'next' as const, label: t('editor.next'), disabled: !nextFrame },
             ].map((item) => (
               <button
                 key={item.id}
@@ -1060,7 +1062,7 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
             ))}
           </div>
           {onionMode !== 'none' && (
-            <SliderRow label="Overlay opacity" value={onionOpacity} suffix="%" min={5} max={80} step={1} onChange={setOnionOpacity} />
+            <SliderRow label={t('editor.overlay_opacity')} value={onionOpacity} suffix="%" min={5} max={80} step={1} onChange={setOnionOpacity} />
           )}
         </fieldset>
       )}
@@ -1090,33 +1092,33 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
             <span className="grid place-items-center w-7 h-7 rounded-control bg-gradient-to-br from-primary to-dedupe shadow-[0_0_16px_var(--accent-glow)]">
               <Pen className="w-4 h-4 text-white" aria-hidden="true" />
             </span>
-            Edit frame
+            {t('editor.edit_title')}
             <span className="font-mono text-xs text-muted">
               #{frame.id.split('-').pop()?.substring(0, 4)}
             </span>
           </h2>
 
           <div className="flex items-center gap-1">
-            <button type="button" onClick={handleUndo} disabled={historyIndex <= 0} className={HIST_BTN} title="Undo (Ctrl+Z)">
-              <Undo2 className="w-4 h-4" aria-hidden="true" /> <span className="hidden sm:inline">Undo</span>
+            <button type="button" onClick={handleUndo} disabled={historyIndex <= 0} className={HIST_BTN} title={t('editor.undo_title')}>
+              <Undo2 className="w-4 h-4" aria-hidden="true" /> <span className="hidden sm:inline">{t('editor.undo')}</span>
             </button>
-            <button type="button" onClick={handleRedo} disabled={historyIndex >= history.length - 1} className={HIST_BTN} title="Redo (Ctrl+Y)">
-              <Redo2 className="w-4 h-4" aria-hidden="true" /> <span className="hidden sm:inline">Redo</span>
+            <button type="button" onClick={handleRedo} disabled={historyIndex >= history.length - 1} className={HIST_BTN} title={t('editor.redo_title')}>
+              <Redo2 className="w-4 h-4" aria-hidden="true" /> <span className="hidden sm:inline">{t('editor.redo')}</span>
             </button>
             <button
               type="button"
               onClick={handleRestore}
               disabled={historyIndex <= 0}
               className="flex items-center gap-1.5 min-h-[36px] px-2.5 rounded-control text-xs font-medium text-primary border border-hairline hover:bg-primary/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
-              title="Restore original"
+              title={t('editor.restore_title')}
             >
-              <RotateCcw className="w-4 h-4" aria-hidden="true" /> <span className="hidden sm:inline">Restore</span>
+              <RotateCcw className="w-4 h-4" aria-hidden="true" /> <span className="hidden sm:inline">{t('editor.restore')}</span>
             </button>
             <span className="mx-1 h-5 w-px bg-hairline" aria-hidden="true" />
             <button
               type="button"
               onClick={requestClose}
-              aria-label="Close editor"
+              aria-label={t('editor.close')}
               className="grid place-items-center w-9 h-9 rounded-control text-muted hover:text-foreground hover:bg-white/5 transition-colors"
             >
               <X className="w-5 h-5" aria-hidden="true" />
@@ -1132,17 +1134,17 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
             aria-label="Editing tools"
             className="w-14 shrink-0 flex flex-col items-center gap-1 py-3 border-r border-hairline bg-surface/30"
           >
-            {DRAW_TOOLS.map((t) => (
+            {DRAW_TOOLS.map((t_item) => (
               <button
-                key={t.id}
+                key={t_item.id}
                 type="button"
-                onClick={() => setActiveTool(t.id)}
-                aria-pressed={activeTool === t.id}
-                aria-label={t.label}
-                title={t.label}
-                className={toolButtonClass(activeTool === t.id)}
+                onClick={() => setActiveTool(t_item.id)}
+                aria-pressed={activeTool === t_item.id}
+                aria-label={t(t_item.labelKey)}
+                title={t(t_item.labelKey)}
+                className={toolButtonClass(activeTool === t_item.id)}
               >
-                <t.icon className="w-5 h-5" aria-hidden="true" />
+                <t_item.icon className="w-5 h-5" aria-hidden="true" />
               </button>
             ))}
             <span className="my-1 h-px w-7 bg-hairline" aria-hidden="true" />
@@ -1150,8 +1152,8 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
               type="button"
               onClick={() => setActiveTool('crop')}
               aria-pressed={activeTool === 'crop'}
-              aria-label="Crop"
-              title="Crop"
+              aria-label={t('editor.crop')}
+              title={t('editor.crop')}
               className={toolButtonClass(activeTool === 'crop')}
             >
               <CropIcon className="w-5 h-5" aria-hidden="true" />
@@ -1161,8 +1163,8 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
                 type="button"
                 onClick={() => setActiveTool('grid')}
                 aria-pressed={activeTool === 'grid'}
-                aria-label="Grid split"
-                title="Grid split"
+                aria-label={t('editor.grid_split')}
+                title={t('editor.grid_split')}
                 className={toolButtonClass(activeTool === 'grid')}
               >
                 <Grid3X3 className="w-5 h-5" aria-hidden="true" />
@@ -1301,10 +1303,10 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
             {/* Hints */}
             <div className="absolute bottom-4 left-4 flex flex-wrap items-center gap-2 max-w-[60%]">
               <span className="text-[11px] text-muted bg-background/80 px-2.5 py-1 rounded-pill backdrop-blur-sm shadow-sm">
-                Alt + Scroll: zoom
+                {t('editor.hint_zoom')}
               </span>
               <span className="text-[11px] text-muted bg-background/80 px-2.5 py-1 rounded-pill backdrop-blur-sm shadow-sm">
-                Alt / Middle-drag: pan
+                {t('editor.hint_pan')}
               </span>
             </div>
 
@@ -1334,10 +1336,10 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
                 <ZoomIn className="w-4 h-4" aria-hidden="true" />
               </button>
               <button type="button" onClick={fitToView} aria-label="Fit canvas to view" className="px-2 h-8 rounded-control text-xs font-medium text-muted hover:text-foreground hover:bg-white/5 transition-colors">
-                Fit
+                {t('editor.fit')}
               </button>
               <button type="button" onClick={resetView} aria-label="Reset zoom to 100%" className="px-2 h-8 rounded-control text-xs font-medium text-muted hover:text-foreground hover:bg-white/5 transition-colors">
-                1:1
+                {t('editor.ratio_1_1')}
               </button>
             </div>
           </div>
@@ -1347,7 +1349,7 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
             aria-label="Tool properties"
             className="hidden sm:flex flex-col w-56 md:w-60 shrink-0 border-l border-hairline bg-surface/30 p-4 overflow-y-auto custom-scrollbar"
           >
-            <h3 className="text-sm font-semibold mb-4">Properties</h3>
+            <h3 className="text-sm font-semibold mb-4">{t('editor.properties')}</h3>
 
             <div className="space-y-5">
               {/* Color */}
@@ -1463,7 +1465,7 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
                             : 'bg-surface-hover text-muted hover:text-foreground'
                         }`}
                       >
-                        {m.label}
+                        {t(m.labelKey)}
                       </button>
                     ))}
                   </div>
@@ -1473,28 +1475,28 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
               {/* Crop actions */}
               {activeTool === 'crop' && (
                 <div className="space-y-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted/70">Crop</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted/70">{t('editor.crop')}</p>
                   <div className="grid grid-cols-3 gap-1">
                     <button
                       type="button"
                       onClick={setFullCrop}
                       className="min-h-[32px] rounded-control bg-surface-hover text-xs font-medium text-muted hover:text-foreground transition-colors"
                     >
-                      Full
+                      {t('editor.full')}
                     </button>
                     <button
                       type="button"
                       onClick={centerCrop}
                       className="min-h-[32px] rounded-control bg-surface-hover text-xs font-medium text-muted hover:text-foreground transition-colors"
                     >
-                      Center
+                      {t('editor.center')}
                     </button>
                     <button
                       type="button"
                       onClick={squareCrop}
                       className="min-h-[32px] rounded-control bg-surface-hover text-xs font-medium text-muted hover:text-foreground transition-colors"
                     >
-                      1:1
+                      {t('editor.ratio_1_1')}
                     </button>
                   </div>
                   {cropPixelRect && (
@@ -1523,7 +1525,7 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
                         onClick={handleApplyCrop}
                         className="w-full min-h-[40px] rounded-control bg-primary hover:bg-primary-hover text-white text-sm font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-[0_0_16px_var(--accent-glow)]"
                       >
-                        <CheckIcon className="w-4 h-4" aria-hidden="true" /> Apply crop
+                        <CheckIcon className="w-4 h-4" aria-hidden="true" /> {t('editor.apply_crop')}
                       </button>
                       {onBatchCrop && (
                         <button
@@ -1534,13 +1536,13 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
                           }}
                           className="w-full min-h-[40px] rounded-control border border-hairline text-matte hover:bg-matte/10 text-sm font-medium flex items-center justify-center gap-1.5 transition-colors"
                         >
-                          <Layers className="w-4 h-4" aria-hidden="true" /> Apply to selected frames
+                          <Layers className="w-4 h-4" aria-hidden="true" /> {t('editor.apply_selected')}
                         </button>
                       )}
                     </>
                   ) : (
                     <p className="text-xs text-muted leading-relaxed">
-                      Drag on the canvas to select a crop region.
+                      {t('editor.crop_desc')}
                     </p>
                   )}
                 </div>
@@ -1585,11 +1587,11 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
         {showMobileProperties && (
           <div className="sm:hidden border-t border-hairline bg-surface/95 backdrop-blur-md max-h-[46vh] overflow-y-auto custom-scrollbar p-4">
             <div className="flex items-center justify-between gap-3 mb-4">
-              <h3 className="text-sm font-semibold">Properties</h3>
+              <h3 className="text-sm font-semibold">{t('editor.properties')}</h3>
               <button
                 type="button"
                 onClick={() => setShowMobileProperties(false)}
-                aria-label="Close properties"
+                aria-label={t('editor.close')}
                 className="grid place-items-center w-8 h-8 rounded-control text-muted hover:text-foreground hover:bg-white/5 transition-colors"
               >
                 <X className="w-4 h-4" aria-hidden="true" />
@@ -1607,7 +1609,7 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
             aria-expanded={showMobileProperties}
             className="sm:hidden min-h-[40px] px-3 rounded-control border border-hairline text-sm font-medium text-muted hover:text-foreground hover:bg-white/5 transition-colors flex items-center gap-1.5"
           >
-            <SlidersHorizontal className="w-4 h-4" aria-hidden="true" /> Properties
+            <SlidersHorizontal className="w-4 h-4" aria-hidden="true" /> {t('editor.properties')}
           </button>
           <div className="flex items-center justify-end gap-3">
           <button
@@ -1615,14 +1617,14 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
             onClick={requestClose}
             className="min-h-[40px] px-4 rounded-control border border-hairline text-sm font-medium text-muted hover:text-foreground hover:bg-white/5 transition-colors"
           >
-            Close
+            {t('editor.close')}
           </button>
           <button
             type="button"
             onClick={handleSave}
             className="min-h-[40px] px-4 rounded-control bg-primary hover:bg-primary-hover text-white text-sm font-semibold flex items-center gap-1.5 transition-colors shadow-[0_0_20px_var(--accent-glow)]"
           >
-            <Save className="w-4 h-4" aria-hidden="true" /> Save &amp; close
+            <Save className="w-4 h-4" aria-hidden="true" /> {t('editor.save_close')}
           </button>
           </div>
         </footer>

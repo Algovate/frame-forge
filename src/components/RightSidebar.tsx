@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import {
   Film,
   Wand2,
@@ -46,6 +47,7 @@ const MATTING_MODES: { id: MattingMode; label: string }[] = [
 ];
 
 export function RightSidebar(props: RightSidebarProps) {
+  const { t } = useTranslation();
   if (props.frames.length === 0) return null;
 
   const isStatic = props.frames.length <= 1;
@@ -64,7 +66,7 @@ export function RightSidebar(props: RightSidebarProps) {
           ) : (
             <Film className="w-5 h-5 text-primary" aria-hidden="true" />
           )}
-          <span>Preview</span>
+          <span>{t('sidebar.preview')}</span>
           <span className="ml-auto text-[11px] font-normal text-muted font-mono bg-background/50 px-2 py-1 rounded-md border border-hairline">
             {props.readiness.selectedCount} / {props.frames.length}
           </span>
@@ -87,7 +89,7 @@ export function RightSidebar(props: RightSidebarProps) {
         {!isStatic && (
           <fieldset className="mt-2">
             <div className="flex justify-between items-center mb-1">
-              <legend className="text-[11px] text-muted">Frame delay</legend>
+              <legend className="text-[11px] text-muted">{t('sidebar.frame_delay')}</legend>
               <span className="text-[11px] font-mono text-muted">{props.gifDelay} ms</span>
             </div>
             <div className="px-1 pt-1 pb-1">
@@ -107,7 +109,7 @@ export function RightSidebar(props: RightSidebarProps) {
       {/* Prepare */}
       <div className="glass-panel rounded-card p-3">
         <h2 className={HEADING}>
-          <Wand2 className="w-4 h-4 text-dedupe" aria-hidden="true" /> Prepare
+          <Wand2 className="w-4 h-4 text-dedupe" aria-hidden="true" /> {t('sidebar.prepare')}
         </h2>
         <div className="space-y-2">
           <div className="grid grid-cols-3 gap-1.5" role="group" aria-label="Matting mode">
@@ -124,7 +126,7 @@ export function RightSidebar(props: RightSidebarProps) {
                     : 'border-hairline text-muted hover:text-foreground hover:bg-surface-hover'
                 }`}
               >
-                {mode.label}
+                {mode.id === 'edge-key' ? t('sidebar.matting_edge') : mode.id === 'conservative' ? t('sidebar.matting_conserv') : t('sidebar.matting_balance')}
               </button>
             ))}
           </div>
@@ -134,7 +136,7 @@ export function RightSidebar(props: RightSidebarProps) {
             disabled={disableFrameActions}
             className="w-full min-h-[32px] bg-matte/10 text-matte hover:bg-matte/20 border border-matte/30 rounded-control text-xs font-medium flex justify-center items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            <Wand2 className="w-3.5 h-3.5" aria-hidden="true" /> {isStatic ? 'Cleanup' : 'Batch cleanup'}
+            <Wand2 className="w-3.5 h-3.5" aria-hidden="true" /> {isStatic ? t('sidebar.cleanup') : t('sidebar.batch_cleanup')}
           </button>
         </div>
       </div>
@@ -143,7 +145,7 @@ export function RightSidebar(props: RightSidebarProps) {
       <div className="glass-panel rounded-card p-3">
         <h2 className={HEADING}>
           <div className="flex items-center gap-1.5">
-            <SlidersHorizontal className="w-4 h-4 text-primary" aria-hidden="true" /> Output
+            <SlidersHorizontal className="w-4 h-4 text-primary" aria-hidden="true" /> {t('sidebar.output')}
           </div>
           <button
             type="button"
@@ -154,13 +156,13 @@ export function RightSidebar(props: RightSidebarProps) {
             disabled={props.isProcessing}
             className="ml-auto text-[10px] text-primary hover:bg-primary/10 px-1.5 py-0.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            240x240 Preset
+            {t('sidebar.preset_240')}
           </button>
         </h2>
         <div className="space-y-2">
           <div className="grid grid-cols-2 gap-2">
             <label htmlFor="exp-width" className="block">
-              <span className="block text-[10px] text-muted mb-0.5">Width</span>
+              <span className="block text-[10px] text-muted mb-0.5">{t('sidebar.width')}</span>
               <input
                 id="exp-width"
                 type="number"
@@ -171,7 +173,7 @@ export function RightSidebar(props: RightSidebarProps) {
               />
             </label>
             <label htmlFor="exp-height" className="block">
-              <span className="block text-[10px] text-muted mb-0.5">Height</span>
+              <span className="block text-[10px] text-muted mb-0.5">{t('sidebar.height')}</span>
               <input
                 id="exp-height"
                 type="number"
@@ -186,7 +188,7 @@ export function RightSidebar(props: RightSidebarProps) {
           {props.readiness.messages.length > 0 && (
             <ul className="space-y-0.5 text-[10px] text-muted leading-tight">
               {props.readiness.messages.map((message) => (
-                <li key={message}>{message}</li>
+                <li key={message}>{t(message)}</li>
               ))}
             </ul>
           )}
@@ -196,14 +198,14 @@ export function RightSidebar(props: RightSidebarProps) {
       {/* Export */}
       <div className="glass-panel rounded-card p-3">
         <h2 className={HEADING}>
-          <Download className="w-4 h-4 text-primary" aria-hidden="true" /> Export
+          <Download className="w-4 h-4 text-primary" aria-hidden="true" /> {t('sidebar.export')}
         </h2>
         <div className="space-y-2">
           {!isStatic && (
             <ExportButton
               icon={Film}
-              title="Export WeChat GIF"
-              hint="Selected frames & delay"
+              title={t('sidebar.export_wechat_gif')}
+              hint={t('sidebar.hint_gif')}
               disabled={disableFrameActions}
               onClick={props.onExportGIF}
               primary
@@ -212,8 +214,8 @@ export function RightSidebar(props: RightSidebarProps) {
 
           <ExportButton
             icon={ImageIcon}
-            title="Export WeChat PNG"
-            hint={props.readiness.selectedCount > 1 ? "Selected frames (ZIP)" : "First selected frame"}
+            title={t('sidebar.export_wechat_png')}
+            hint={props.readiness.selectedCount > 1 ? t('sidebar.hint_png_zip') : t('sidebar.hint_png_single')}
             disabled={disableFrameActions}
             onClick={props.onExportPNG}
             primary={isStatic}
@@ -221,29 +223,29 @@ export function RightSidebar(props: RightSidebarProps) {
 
           <details className="rounded-control border border-hairline bg-surface-hover/40 p-2">
             <summary className="cursor-pointer text-[11px] font-medium text-muted hover:text-foreground">
-              Advanced export options
+              {t('sidebar.advanced_export')}
             </summary>
 
             <div className="mt-2 space-y-2">
               {!isStatic && (
                 <>
                   <fieldset className="space-y-1 rounded-control border border-hairline p-2">
-                    <legend className="px-1 text-[10px] font-medium text-muted">Sprite sheet</legend>
+                    <legend className="px-1 text-[10px] font-medium text-muted">{t('sidebar.sprite_sheet')}</legend>
                     <div className="grid grid-cols-2 gap-1.5">
                       <label htmlFor="sprite-cols" className="block">
-                        <span className="block text-[10px] text-muted mb-0.5">Columns</span>
+                        <span className="block text-[10px] text-muted mb-0.5">{t('sidebar.columns')}</span>
                         <input
                           id="sprite-cols"
                           type="number"
                           min={0}
                           value={props.spriteCols || ''}
                           onChange={(e) => props.setSpriteCols(clampMin(e.currentTarget.valueAsNumber, 0, 0))}
-                          placeholder="auto"
+                          placeholder={t('sidebar.auto')}
                           className={FIELD}
                         />
                       </label>
                       <label htmlFor="sprite-pad" className="block">
-                        <span className="block text-[10px] text-muted mb-0.5">Padding</span>
+                        <span className="block text-[10px] text-muted mb-0.5">{t('sidebar.padding')}</span>
                         <input
                           id="sprite-pad"
                           type="number"
@@ -260,15 +262,15 @@ export function RightSidebar(props: RightSidebarProps) {
                   <div className="grid grid-cols-2 gap-1.5">
                     <ExportButton
                       icon={Archive}
-                      title="ZIP"
-                      hint="Frames"
+                      title={t('sidebar.zip')}
+                      hint={t('sidebar.hint_zip')}
                       disabled={disableFrameActions}
                       onClick={props.onExportZIP}
                     />
                     <ExportButton
                       icon={LayoutGrid}
-                      title="Sprite"
-                      hint="Sheet"
+                      title={t('sidebar.sprite')}
+                      hint={t('sidebar.hint_sprite')}
                       disabled={disableFrameActions}
                       onClick={props.onExportSpriteSheet}
                     />

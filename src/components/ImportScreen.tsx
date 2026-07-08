@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect, type DragEvent, type SyntheticEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
 import {
@@ -26,6 +27,7 @@ interface ImportScreenProps {
 }
 
 export function ImportScreen(props: ImportScreenProps) {
+  const { t } = useTranslation();
   const [isDragOver, setIsDragOver] = useState(false);
   const dragCounter = useRef(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -112,12 +114,12 @@ export function ImportScreen(props: ImportScreenProps) {
   const canProcessSource = props.sourceFiles.length > 0 && !props.isProcessing && (!isVideoSource || estimatedFrames > 0);
 
   const PROCESS_LABELS: Record<StickerSourceKind, string> = {
-    gif: 'Parse GIF frames',
-    video: 'Extract sticker frames',
-    'static-image': 'Load image',
-    'static-images-batch': `Load ${props.sourceFiles.length} images`,
+    gif: t('import.parse_gif'),
+    video: t('import.extract_video'),
+    'static-image': t('import.load_image'),
+    'static-images-batch': t('import.load_images', { count: props.sourceFiles.length }),
   };
-  const processLabel = props.sourceKind ? PROCESS_LABELS[props.sourceKind] : 'Extract sticker frames';
+  const processLabel = props.sourceKind ? PROCESS_LABELS[props.sourceKind] : t('import.extract_video');
   // The primary process button is identical whether it sits inside the
   // extraction-settings panel (video) or standalone (other source kinds).
   const processButton = (
@@ -128,12 +130,12 @@ export function ImportScreen(props: ImportScreenProps) {
       className="w-full min-h-[44px] bg-primary hover:bg-primary-hover text-white rounded-control font-semibold flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-[0_0_20px_var(--accent-glow)]"
     >
       {extracting ? <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" /> : null}
-      {extracting ? 'Extracting...' : processLabel}
+      {extracting ? t('import.extracting') : processLabel}
     </button>
   );
   // Shared by both the hover overlay and the fallback (non-preview) states below.
   const sourceLabel = props.sourceFiles.length > 1
-    ? `${props.sourceFiles.length} images selected`
+    ? t('import.images_selected', { count: props.sourceFiles.length })
     : props.sourceFiles[0]?.name ?? '';
 
 
@@ -144,7 +146,7 @@ export function ImportScreen(props: ImportScreenProps) {
         {/* Source */}
       <div className="glass-panel rounded-card p-5">
         <h2 className={HEADING}>
-          <Upload className="w-5 h-5 text-primary" aria-hidden="true" /> Sticker source
+          <Upload className="w-5 h-5 text-primary" aria-hidden="true" /> {t('import.sticker_source')}
         </h2>
         <label
           onDragEnter={onDragEnter}
@@ -193,7 +195,7 @@ export function ImportScreen(props: ImportScreenProps) {
                     <span className="text-sm font-medium text-white max-w-[90%] truncate px-2 text-center leading-tight">
                       {sourceLabel}
                     </span>
-                    <span className="text-xs text-white/80 mt-1">Click or drop to replace</span>
+                    <span className="text-xs text-white/80 mt-1">{t('import.click_drop_replace')}</span>
                   </div>
                 </>
               ) : (
@@ -202,7 +204,7 @@ export function ImportScreen(props: ImportScreenProps) {
                   <span className="text-sm font-medium text-foreground max-w-[220px] truncate">
                     {sourceLabel}
                   </span>
-                  <span className="text-xs text-muted mt-1">Click or drop to replace</span>
+                  <span className="text-xs text-muted mt-1">{t('import.click_drop_replace')}</span>
                 </div>
               )}
             </div>
@@ -213,9 +215,9 @@ export function ImportScreen(props: ImportScreenProps) {
                 aria-hidden="true"
               />
               <span className="text-sm font-medium text-foreground">
-                {isDragOver ? 'Drop to load' : 'Drop an image, video, or GIF'}
+                {isDragOver ? t('import.drop_load') : t('import.drop_prompt')}
               </span>
-              <span className="text-xs text-muted mt-1">or click to browse</span>
+              <span className="text-xs text-muted mt-1">{t('import.click_browse')}</span>
             </>
           )}
         </label>
@@ -225,13 +227,13 @@ export function ImportScreen(props: ImportScreenProps) {
       {props.sourceFiles.length > 0 && isVideoSource && (
         <div className="glass-panel rounded-card p-5">
           <h2 className={HEADING}>
-            <Settings className="w-5 h-5 text-primary" aria-hidden="true" /> Extraction settings
+            <Settings className="w-5 h-5 text-primary" aria-hidden="true" /> {t('import.extraction_settings')}
           </h2>
           <div className="space-y-6">
             {isVideoSource && videoDuration > 0 && (
               <fieldset>
                 <div className="flex justify-between items-center mb-2">
-                  <legend className="text-sm text-muted">Timeline</legend>
+                  <legend className="text-sm text-muted">{t('import.timeline')}</legend>
                   <span className="text-xs font-mono text-muted">
                     {props.startTime.toFixed(2)}s - {actualEndTime.toFixed(2)}s
                   </span>
@@ -253,7 +255,7 @@ export function ImportScreen(props: ImportScreenProps) {
             {isVideoSource && (
               <fieldset>
                 <div className="flex justify-between items-center mb-2">
-                  <legend className="text-sm text-muted">Frame rate (FPS)</legend>
+                  <legend className="text-sm text-muted">{t('import.fps')}</legend>
                   <span className="text-xs font-mono text-muted">{props.fps} fps</span>
                 </div>
                 <div className="px-2 pt-1 pb-2">
@@ -270,7 +272,7 @@ export function ImportScreen(props: ImportScreenProps) {
             )}
 
             <div className="bg-surface-hover border border-hairline rounded-control p-3 flex justify-between items-center">
-              <span className="text-sm text-muted">Estimated frames</span>
+              <span className="text-sm text-muted">{t('import.estimated_frames')}</span>
               <span className="text-base font-semibold text-foreground">{estimatedFrames}</span>
             </div>
 

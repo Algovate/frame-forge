@@ -1,5 +1,6 @@
-import { Layers, RotateCcw, Plus } from 'lucide-react';
+import { Layers, RotateCcw, Plus, Languages } from 'lucide-react';
 import { useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface HeaderProps {
   onReset?: () => void;
@@ -11,6 +12,12 @@ const HEADER_BUTTON_CLASS =
 
 export function Header({ onReset, onAppendFiles }: HeaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { t, i18n } = useTranslation();
+
+  const toggleLanguage = () => {
+    const nextLng = i18n.language === 'en' ? 'zh' : 'en';
+    i18n.changeLanguage(nextLng);
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -26,9 +33,9 @@ export function Header({ onReset, onAppendFiles }: HeaderProps) {
           <Layers className="w-5 h-5 text-white" aria-hidden="true" />
         </div>
         <div>
-          <h1 className="text-xl font-bold tracking-tight leading-tight">Frame Forge</h1>
+          <h1 className="text-xl font-bold tracking-tight leading-tight">{t('header.title', 'Frame Forge')}</h1>
           <p className="text-xs text-muted leading-tight mt-0.5">
-            Browser-based frame extractor
+            {t('header.subtitle', 'Browser-based frame extractor')}
           </p>
         </div>
       </div>
@@ -49,10 +56,10 @@ export function Header({ onReset, onAppendFiles }: HeaderProps) {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className={HEADER_BUTTON_CLASS}
-                title="Add more frames from images or a video"
+                title={t('header.add_frames', 'Add Frames')}
               >
                 <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">Add Frames</span>
+                <span className="hidden sm:inline">{t('header.add_frames', 'Add Frames')}</span>
               </button>
             </>
           )}
@@ -61,12 +68,34 @@ export function Header({ onReset, onAppendFiles }: HeaderProps) {
               type="button"
               onClick={onReset}
               className={HEADER_BUTTON_CLASS}
-              title="Start over with a new file"
+              title={t('header.new_source', 'New Source')}
             >
               <RotateCcw className="w-4 h-4" />
-              <span className="hidden sm:inline">New Source</span>
+              <span className="hidden sm:inline">{t('header.new_source', 'New Source')}</span>
             </button>
           )}
+          <button
+            type="button"
+            onClick={toggleLanguage}
+            className={HEADER_BUTTON_CLASS}
+            title={i18n.language === 'en' ? 'Switch to Chinese' : '切换到英文'}
+          >
+            <Languages className="w-4 h-4" />
+            <span className="hidden sm:inline">{i18n.language === 'en' ? 'EN' : '中'}</span>
+          </button>
+        </div>
+      )}
+      {(!onReset && !onAppendFiles) && (
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={toggleLanguage}
+            className={HEADER_BUTTON_CLASS}
+            title={i18n.language === 'en' ? 'Switch to Chinese' : '切换到英文'}
+          >
+            <Languages className="w-4 h-4" />
+            <span className="hidden sm:inline">{i18n.language === 'en' ? 'EN' : '中'}</span>
+          </button>
         </div>
       )}
     </header>

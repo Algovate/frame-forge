@@ -83,12 +83,7 @@ const buildFakeCanvas = (w: number, h: number) => {
   return { canvas, ctx };
 };
 
-// Parse our fake data URL to extract pixel samples
-const parsePixelDataUrl = (dataUrl: string): number[] => {
-  const match = dataUrl.match(/pixeldata,(.+)$/);
-  if (!match) return [];
-  return JSON.parse(match[1]);
-};
+// Parse our fake data URL to extract pixel samples (unused in this test file but kept for reference)
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -120,7 +115,7 @@ vi.mock('./canvasFit', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./canvasFit')>();
   return {
     ...actual,
-    fitImageToCanvas: vi.fn(async (dataUrl: string, w: number, h: number, mode?: string) => {
+    fitImageToCanvas: vi.fn(async (dataUrl: string, w: number, h: number, _mode?: string) => {
       // Re-implement the real logic using our fake canvas so we can inspect results
       const { loadImage } = await import('./media');
       const img = await loadImage(dataUrl);
@@ -135,7 +130,6 @@ vi.mock('./canvasFit', async (importOriginal) => {
 });
 
 // Stub fetch for the blob conversion at the end of exportPNG
-const originalFetch = globalThis.fetch;
 vi.stubGlobal('fetch', vi.fn(async (url: string) => ({
   blob: async () => {
     // Just pass through — the important thing is the data URL content

@@ -1,4 +1,5 @@
 import { Image as ImageIcon, Trash2, Check, Shuffle, ArrowRightToLine, ArrowLeftToLine, Undo2, Repeat, Zap, Copy, Pen, CheckSquare, Square } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { ExtractedFrame } from '../types';
 import { useState, type KeyboardEvent } from 'react';
 import Slider from 'rc-slider';
@@ -54,6 +55,7 @@ export function FrameGallery({
   onSelectRange,
   onSelectOnly,
 }: FrameGalleryProps) {
+  const { t } = useTranslation();
   const [threshold, setThreshold] = useState(65);
   const [lastClickedId, setLastClickedId] = useState<string | null>(null);
   
@@ -91,7 +93,7 @@ export function FrameGallery({
       <div className="flex flex-wrap justify-between items-center gap-y-3 gap-x-2 mb-4">
         <div className="flex flex-wrap items-center justify-between w-full xl:w-auto xl:flex-1 gap-2">
           <h2 className="text-lg font-semibold flex items-center gap-2">
-            <ImageIcon className="w-5 h-5 text-primary" aria-hidden="true" /> Sticker frames
+            <ImageIcon className="w-5 h-5 text-primary" aria-hidden="true" /> {t('gallery.title')}
             {frames.length > 0 && (
               <span className="ml-1 font-mono text-xs text-muted tabular-nums">
                 {selectedCount}
@@ -103,7 +105,7 @@ export function FrameGallery({
 
           {frames.length > 0 && (
             <div className="flex items-center gap-2 px-3 py-1 bg-surface-hover rounded-control border border-hairline xl:ml-auto">
-              <span className="text-[11px] text-muted whitespace-nowrap">Similarity:</span>
+              <span className="text-[11px] text-muted whitespace-nowrap">{t('gallery.similarity')}</span>
               <div className="w-16 sm:w-24">
                 <Slider min={1} max={100} value={threshold} onChange={(v) => setThreshold(v as number)}
                   styles={SLIDER_STYLES_SM}
@@ -115,26 +117,26 @@ export function FrameGallery({
                 <button 
                   onClick={() => onFindLoops?.(threshold)} 
                   className="flex items-center gap-1 text-primary hover:bg-primary/10 px-2 py-0.5 rounded transition-colors"
-                  title="Find loop frames"
+                  title={t('gallery.find_loop')}
                 >
                   <Repeat className="w-3.5 h-3.5" />
-                  <span className="text-[11px] font-medium hidden xl:inline">Loop</span>
+                  <span className="text-[11px] font-medium hidden xl:inline">{t('gallery.loop')}</span>
                 </button>
                 <button 
                   onClick={() => onFindJumps?.(threshold)} 
                   className="flex items-center gap-1 text-jump hover:bg-jump/10 px-2 py-0.5 rounded transition-colors"
-                  title="Find jump frames"
+                  title={t('gallery.find_jumps')}
                 >
                   <Zap className="w-3.5 h-3.5" />
-                  <span className="text-[11px] font-medium hidden xl:inline">Jumps</span>
+                  <span className="text-[11px] font-medium hidden xl:inline">{t('gallery.jumps')}</span>
                 </button>
                 <button 
                   onClick={() => onFindDuplicates?.(threshold)} 
                   className="flex items-center gap-1 text-dedupe hover:bg-dedupe/10 px-2 py-0.5 rounded transition-colors"
-                  title="Find duplicate frames"
+                  title={t('gallery.find_duplicates')}
                 >
                   <Copy className="w-3.5 h-3.5" />
-                  <span className="text-[11px] font-medium hidden xl:inline">Duplicates</span>
+                  <span className="text-[11px] font-medium hidden xl:inline">{t('gallery.duplicates')}</span>
                 </button>
               </div>
             </div>
@@ -143,18 +145,18 @@ export function FrameGallery({
 
         {frames.length > 0 && (
           <div className="flex flex-wrap gap-1 items-center w-full">
-            <button type="button" onClick={() => onSelectAll()} className={ICON_CTRL} title="Select all">
+            <button type="button" onClick={() => onSelectAll()} className={ICON_CTRL} title={t('gallery.select_all')}>
               <CheckSquare className="w-4 h-4" />
             </button>
             {onSelectNone && (
-              <button type="button" onClick={() => onSelectNone()} className={ICON_CTRL} title="Select none">
+              <button type="button" onClick={() => onSelectNone()} className={ICON_CTRL} title={t('gallery.select_none')}>
                 <Square className="w-4 h-4" />
               </button>
             )}
-            <button type="button" onClick={() => onInvertSelection?.()} className={ICON_CTRL} title="Invert selection">
+            <button type="button" onClick={() => onInvertSelection?.()} className={ICON_CTRL} title={t('gallery.invert_selection')}>
               <Shuffle className="w-4 h-4" />
             </button>
-            <button type="button" onClick={() => onReverseFrames?.()} className={ICON_CTRL} title="Reverse frames">
+            <button type="button" onClick={() => onReverseFrames?.()} className={ICON_CTRL} title={t('gallery.reverse_frames')}>
               <Undo2 className="w-4 h-4" />
             </button>
             
@@ -164,7 +166,7 @@ export function FrameGallery({
                 onClick={() => lastClickedId && onRemovePreceding?.(lastClickedId)} 
                 className={ICON_CTRL}
                 disabled={!lastClickedId}
-                title="Remove frames before the last clicked frame"
+                title={t('gallery.remove_before')}
               >
                 <ArrowLeftToLine className="w-4 h-4" />
               </button>
@@ -174,7 +176,7 @@ export function FrameGallery({
                 onClick={() => lastClickedId && onRemoveSubsequent?.(lastClickedId)} 
                 className={ICON_CTRL}
                 disabled={!lastClickedId}
-                title="Remove frames after the last clicked frame"
+                title={t('gallery.remove_after')}
               >
                 <ArrowRightToLine className="w-4 h-4" />
               </button>
@@ -182,14 +184,14 @@ export function FrameGallery({
 
             <div className="flex items-center gap-1 sm:ml-1 border-l border-hairline pl-1.5">
               {onDuplicateSelected && (
-                <button type="button" onClick={onDuplicateSelected} className={`${ICON_CTRL} hover:bg-white/10`} title="Duplicate selected frames">
+                <button type="button" onClick={onDuplicateSelected} className={`${ICON_CTRL} hover:bg-white/10`} title={t('gallery.duplicate_selected')}>
                   <Copy className="w-4 h-4" aria-hidden="true" />
                 </button>
               )}
-              <button type="button" onClick={onDeleteSelected} className={`${ICON_CTRL} text-destructive hover:bg-destructive/10`} title="Delete selected frames">
+              <button type="button" onClick={onDeleteSelected} className={`${ICON_CTRL} text-destructive hover:bg-destructive/10`} title={t('gallery.delete_selected')}>
                 <Trash2 className="w-4 h-4" aria-hidden="true" />
               </button>
-              <button type="button" onClick={onDeleteUnselected} className={`${ICON_CTRL} text-destructive hover:bg-destructive/10`} title="Delete unselected frames">
+              <button type="button" onClick={onDeleteUnselected} className={`${ICON_CTRL} text-destructive hover:bg-destructive/10`} title={t('gallery.delete_unselected')}>
                 <Trash2 className="w-4 h-4 opacity-60" aria-hidden="true" />
               </button>
             </div>
@@ -200,9 +202,9 @@ export function FrameGallery({
       {frames.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center text-center rounded-control border-2 border-dashed border-hairline min-h-[420px] px-6">
           <ImageIcon className="w-16 h-16 mb-4 text-muted opacity-40" aria-hidden="true" />
-          <p className="text-lg text-foreground/80">No sticker frames yet</p>
+          <p className="text-lg text-foreground/80">{t('gallery.no_frames')}</p>
           <p className="text-sm mt-2 text-muted">
-            Load a video or GIF, then extract frames to begin.
+            {t('gallery.no_frames_desc')}
           </p>
         </div>
       ) : (
@@ -216,7 +218,7 @@ export function FrameGallery({
                 onClick={(e) => handleToggleSelection(e, frame.id)}
                 onKeyDown={(event) => handleFrameKeyDown(event, frame.id)}
                 aria-pressed={frame.selected}
-                aria-label={`Frame ${index + 1}${frame.selected ? ', selected' : ', not selected'}`}
+                aria-label={frame.selected ? t('gallery.frame_selected', { number: index + 1 }) : t('gallery.frame_not_selected', { number: index + 1 })}
                 style={{ aspectRatio: `${frame.width ?? 16} / ${frame.height ?? 9}` }}
                 className={`group relative rounded-control overflow-hidden border cursor-pointer transition-[transform,border-color,box-shadow] duration-150 frame-checker ${
                   frame.selected
@@ -226,7 +228,7 @@ export function FrameGallery({
               >
                 <img
                   src={frame.dataUrl}
-                  alt={`Frame ${index + 1}`}
+                  alt={t('gallery.frame_number', { number: index + 1 })}
                   loading="lazy"
                   className="w-full h-full object-contain"
                 />
@@ -250,7 +252,7 @@ export function FrameGallery({
                       ? 'opacity-100'
                       : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100'
                   }`}
-                  title="Edit Frame"
+                  title={t('gallery.edit_frame')}
                 >
                   <Pen className="w-3.5 h-3.5" aria-hidden="true" />
                 </button>

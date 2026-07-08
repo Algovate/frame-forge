@@ -19,10 +19,10 @@ export const getWechatReadiness = (
   const isWechatSize = width === WECHAT_STICKER_PRESET.width && height === WECHAT_STICKER_PRESET.height;
   const messages: string[] = [];
 
-  if (selectedCount === 0) messages.push('Select at least one sticker frame.');
-  if (!isWechatSize) messages.push('Set output size to 240 x 240.');
-  if (!isSquare) messages.push('Use a square canvas for WeChat stickers.');
-  if (messages.length === 0) messages.push('Ready for WeChat GIF export.');
+  if (selectedCount === 0) messages.push('wechat.select_frame');
+  if (!isWechatSize) messages.push('wechat.size_240');
+  if (!isSquare) messages.push('wechat.square_canvas');
+  if (messages.length === 0) messages.push('wechat.ready');
   return {
     selectedCount,
     durationMs: selectedCount * gifDelay,

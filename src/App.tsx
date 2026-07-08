@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ImportScreen } from './components/ImportScreen';
 import { Header } from './components/Header';
 import { RightSidebar } from './components/RightSidebar';
@@ -16,6 +17,7 @@ import { WECHAT_STICKER_PRESET, getWechatReadiness } from './utils/wechat';
 import { Loader2 } from 'lucide-react';
 
 function App() {
+  const { t } = useTranslation();
   const [sourceFiles, setSourceFiles] = useState<File[]>([]);
   const [frames, setFrames] = useState<ExtractedFrame[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -78,7 +80,7 @@ function App() {
     const kinds = files.map(classifyStickerSource);
     const ok = isBatch ? kinds.every((k) => k === 'static-image') : !!kinds[0];
     if (!ok) {
-      pushToast('error', isBatch ? `Batch ${batchVerb} only supports static images.` : 'Unsupported file. Use an image, video, or GIF.');
+      pushToast('error', isBatch ? t('app.error_batch_static', { verb: batchVerb }) : t('app.error_unsupported'));
       return null;
     }
     return isBatch ? files : [files[0]];
@@ -93,7 +95,7 @@ function App() {
     setSourceFiles(filesToProcess);
     const kind = classifySourceKind(filesToProcess);
     if (kind === 'video' || kind === 'static-image') {
-      pushToast('success', `Loaded ${filesToProcess[0].name}`);
+      pushToast('success', t('app.success_loaded', { filename: filesToProcess[0].name }));
     } else {
       // Auto-process static images, GIFs, and batches
       processSource(filesToProcess, false);
@@ -110,12 +112,12 @@ function App() {
     if (filesToProcess.length === 0) return;
     const kind = classifySourceKind(filesToProcess);
     if (!kind) {
-      pushToast('error', 'Unsupported file. Use an image, video, or GIF.');
+      pushToast('error', t('app.error_unsupported'));
       return;
     }
     runProcessing(
       'extracting',
-      'Extracting frames...',
+      t('app.extracting'),
       async () => {
         if (!append) {
           revokeFrameUrls(frames); // free matting output before re-extracting
@@ -137,38 +139,38 @@ function App() {
         }
         setFrames((prev) => append ? [...prev, ...extracted] : extracted);
         const n = extracted.length;
-        pushToast('success', append ? `Appended ${n} frame${n === 1 ? '' : 's'}` : `Extracted ${n} frame${n === 1 ? '' : 's'}`);
+        pushToast('success', append ? t('app.success_appended', { count: n, s: n === 1 ? '' : 's' }) : t('app.success_extracted', { count: n, s: n === 1 ? '' : 's' }));
       },
-      'Could not extract frames from that file',
+      t('app.error_extract'),
     );
   };
 
   const handleFindDuplicates = (threshold: number) =>
-    runProcessing('deduping', 'Finding duplicate frames...', async () => {
+    runProcessing('deduping', t('app.finding_duplicates'), async () => {
       const before = frames.filter((f) => f.selected).length;
       const next = await findDuplicateFrames(frames, threshold);
       setFrames(next);
       const removed = before - next.filter((f) => f.selected).length;
-      pushToast('info', removed > 0 ? `Unselected ${removed} duplicate frame${removed === 1 ? '' : 's'}` : 'No duplicate frames found');
-    }, 'Could not analyze frames');
+      pushToast('info', removed > 0 ? t('app.success_dedupe', { count: removed, s: removed === 1 ? '' : 's' }) : t('app.no_duplicates'));
+    }, t('app.error_extract'));
 
   const handleFindLoops = (threshold: number) =>
-    runProcessing('deduping', 'Finding loop frames...', async () => {
+    runProcessing('deduping', t('app.finding_loops'), async () => {
       const before = frames.filter((f) => f.selected).length;
       const next = await findLoopFrames(frames, threshold);
       setFrames(next);
       const removed = before - next.filter((f) => f.selected).length;
-      pushToast('info', removed > 0 ? `Unselected ${removed} trailing frame${removed === 1 ? '' : 's'} to form loop` : 'No loop found');
-    }, 'Could not analyze frames');
+      pushToast('info', removed > 0 ? t('app.success_loop', { count: removed, s: removed === 1 ? '' : 's' }) : t('app.no_loop'));
+    }, t('app.error_extract'));
 
   const handleFindJumps = (threshold: number) =>
-    runProcessing('deduping', 'Finding jump frames...', async () => {
+    runProcessing('deduping', t('app.finding_jumps'), async () => {
       const before = frames.filter((f) => f.selected).length;
       const next = await findJumpFrames(frames, threshold);
       setFrames(next);
       const removed = before - next.filter((f) => f.selected).length;
-      pushToast('info', removed > 0 ? `Unselected ${removed} jump frame${removed === 1 ? '' : 's'}` : 'No jump frames found');
-    }, 'Could not analyze frames');
+      pushToast('info', removed > 0 ? t('app.success_jump', { count: removed, s: removed === 1 ? '' : 's' }) : t('app.no_jumps'));
+    }, t('app.error_extract'));
 
   const handleInvertSelection = () => {
     setFrames(frames.map((f) => ({ ...f, selected: !f.selected })));
@@ -191,55 +193,55 @@ function App() {
   };
 
   const handleRemoveBackgrounds = () =>
-    runProcessing('matting', mattingMode === 'edge-key' ? 'Cleaning frames...' : 'Loading AI Model & Matting...', async () => {
+    runProcessing('matting', mattingMode === 'edge-key' ? t('app.cleaning_frames') : t('app.loading_matting'), async () => {
       const next = await batchRemoveBackground(frames, mattingMode, (msg, updatedFrames) => {
         setProcessMsg(msg);
         setFrames([...updatedFrames]);
       });
       setFrames(next);
-      pushToast('success', 'Background removal complete');
-    }, 'Background removal failed');
+      pushToast('success', t('app.success_matting'));
+    }, t('app.error_matting'));
 
   const handleExportZIP = () => {
-    if (!frames.some((f) => f.selected)) return pushToast('info', 'Select at least one frame first');
-    runProcessing('exporting', 'Generating ZIP...', async () => {
+    if (!frames.some((f) => f.selected)) return pushToast('info', t('app.select_first'));
+    runProcessing('exporting', t('app.generating_zip'), async () => {
       await exportZIP(frames, exportWidth, exportHeight);
-      pushToast('success', 'ZIP archive ready');
-    }, 'ZIP export failed');
+      pushToast('success', t('app.success_zip'));
+    }, t('app.error_zip'));
   };
   const handleExportGIF = () => {
-    if (!frames.some((f) => f.selected)) return pushToast('info', 'Select at least one frame first');
-    runProcessing('exporting', 'Encoding GIF...', async () => {
+    if (!frames.some((f) => f.selected)) return pushToast('info', t('app.select_first'));
+    runProcessing('exporting', t('app.encoding_gif'), async () => {
       const result = await exportGIF(frames, gifDelay, exportWidth, exportHeight);
       if (result) {
-        pushToast('success', `GIF ready (${Math.round(result.sizeBytes / 1024)} KB)`);
+        pushToast('success', t('app.success_gif', { size: Math.round(result.sizeBytes / 1024) }));
       }
-    }, 'GIF export failed');
+    }, t('app.error_gif'));
   };
   const handleExportPNG = () => {
     const selectedCount = frames.filter((f) => f.selected).length;
-    if (selectedCount === 0) return pushToast('info', 'Select at least one frame first');
+    if (selectedCount === 0) return pushToast('info', t('app.select_first'));
     if (selectedCount > 1) {
       // Export as ZIP if multiple are selected
       return handleExportZIP();
     }
-    runProcessing('exporting', 'Exporting PNG...', async () => {
+    runProcessing('exporting', t('app.exporting_png'), async () => {
       const result = await exportPNG(frames, exportWidth, exportHeight);
       if (result) {
-        pushToast('success', `PNG ready (${Math.round(result.sizeBytes / 1024)} KB)`);
+        pushToast('success', t('app.success_png', { size: Math.round(result.sizeBytes / 1024) }));
       }
-    }, 'PNG export failed');
+    }, t('app.error_png'));
   };
   const handleExportSpriteSheet = () => {
-    if (!frames.some((f) => f.selected)) return pushToast('info', 'Select at least one frame first');
+    if (!frames.some((f) => f.selected)) return pushToast('info', t('app.select_first'));
     runProcessing(
       'exporting',
-      'Packing sprite sheet...',
+      t('app.packing_sprite'),
       async () => {
         await exportSpriteSheet(frames, spriteCols, spritePadding, exportWidth, exportHeight);
-        pushToast('success', 'Sprite sheet ready');
+        pushToast('success', t('app.success_sprite'));
       },
-      'Sprite sheet export failed',
+      t('app.error_sprite'),
     );
   };
 
@@ -283,7 +285,7 @@ function App() {
 
   const handleDuplicateSelected = () => {
     const selectedFrames = frames.filter((f) => f.selected);
-    if (selectedFrames.length === 0) return pushToast('info', 'Select at least one frame first');
+    if (selectedFrames.length === 0) return pushToast('info', t('app.select_first'));
 
     const duplicates = selectedFrames.map((f) => ({
       ...f,
@@ -291,7 +293,7 @@ function App() {
       selected: false,
     }));
     setFrames([...frames, ...duplicates]);
-    pushToast('success', `Duplicated ${selectedFrames.length} frame${selectedFrames.length === 1 ? '' : 's'}`);
+    pushToast('success', t('app.success_duplicate', { count: selectedFrames.length, s: selectedFrames.length === 1 ? '' : 's' }));
   };
 
   const handleSaveEdit = (
@@ -307,19 +309,19 @@ function App() {
       height: meta?.height ?? f.height,
     } : f));
     if (meta?.close !== false) setEditingFrameId(null);
-    pushToast('success', meta?.message ?? 'Frame saved');
+    pushToast('success', meta?.message ?? t('app.frame_saved'));
   };
 
   const handleBatchCrop = (rect: PixelRect) => {
     if (!rect.width || !rect.height) return;
     const croppedCount = frames.filter((frame) => frame.selected).length;
-    if (croppedCount === 0) return pushToast('info', 'Select at least one frame first');
+    if (croppedCount === 0) return pushToast('info', t('app.select_first'));
     setEditingFrameId(null);
-    runProcessing('batch-cropping', 'Applying crop to selected frames...', async () => {
+    runProcessing('batch-cropping', t('app.applying_crop'), async () => {
       const updatedFrames = await cropFrames(frames, rect, true);
       setFrames(updatedFrames);
-      pushToast('success', `Cropped ${croppedCount} selected frame${croppedCount === 1 ? '' : 's'}`);
-    }, 'Batch crop failed');
+      pushToast('success', t('app.success_crop', { count: croppedCount, s: croppedCount === 1 ? '' : 's' }));
+    }, t('app.error_crop'));
   };
 
   const handleSplitGridFrame = (id: string, splitFrames: ExtractedFrame[]) => {
@@ -333,7 +335,7 @@ function App() {
       ...frames.slice(idx + 1),
     ]);
     setEditingFrameId(null);
-    pushToast('success', `Split frame into ${splitFrames.length} frame${splitFrames.length === 1 ? '' : 's'}`);
+    pushToast('success', t('app.success_split', { count: splitFrames.length, s: splitFrames.length === 1 ? '' : 's' }));
   };
 
   const editingFrameIndex = editingFrameId ? frames.findIndex((frame) => frame.id === editingFrameId) : -1;
