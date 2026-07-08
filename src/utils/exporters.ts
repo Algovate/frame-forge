@@ -2,7 +2,7 @@ import JSZip from 'jszip';
 import GIF from 'gif.js';
 import type { ExtractedFrame } from '../types';
 import { loadImage, resizeImage } from './media';
-import { fitImageToCanvas } from './canvasFit';
+import { fitImageToCanvas, getObjectFitRect } from './canvasFit';
 
 export interface ExportResult {
   filename: string;
@@ -47,24 +47,64 @@ export const exportGIF = async (
   const selectedFrames = getSelected(frames);
   if (selectedFrames.length === 0) return null;
 
+  const sized = !!(w && h);
   // Only set explicit dimensions when the user asked for a size; otherwise let
   // gif.js derive the canvas from the frames (passing width:0 is ambiguous).
-  const opts: { workers: number; quality: number; workerScript: string; width?: number; height?: number } = {
+  const opts: { workers: number; quality: number; workerScript: string; width?: number; height?: number; transparent?: any; background?: string } = {
     workers: 2,
     quality: 10,
     workerScript: '/gif.worker.js',
+    transparent: 0x00FF00,
+    background: '#00FF00',
   };
-  if (w && h) {
+  if (sized) {
     opts.width = w;
     opts.height = h;
   }
   const gif = new GIF(opts);
 
-  const maybeFit = (dataUrl: string) => (w && h ? fitImageToCanvas(dataUrl, w, h, 'contain') : dataUrl);
+  // One reusable threshold canvas: we re-rasterize + alpha-threshold every
+  // frame onto it, so no fresh canvas/context per frame and no base64 round-trip
+  // through fitImageToCanvas — fit straight from the decoded image.
+  const canvas = document.createElement('canvas');
+  // willReadFrequently: we getImageData on this canvas every frame to threshold alpha.
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
   for (const frame of selectedFrames) {
-    const img = await loadImage(await maybeFit(frame.dataUrl));
-    gif.addFrame(img, { delay });
+    const img = await loadImage(frame.dataUrl);
+    const cw = sized ? w! : img.width;
+    const ch = sized ? h! : img.height;
+    canvas.width = cw;
+    canvas.height = ch;
+
+    if (!ctx) {
+      gif.addFrame(img, { delay });
+      continue;
+    }
+
+    ctx.clearRect(0, 0, cw, ch);
+    const rect = sized
+      ? getObjectFitRect(img.width, img.height, w!, h!, 'contain')
+      : { dx: 0, dy: 0, dw: img.width, dh: img.height };
+    ctx.drawImage(img, rect.dx, rect.dy, rect.dw, rect.dh);
+
+    // Alpha-threshold to gif.js's single transparent key color: pixels below the
+    // cutoff become opaque green (the key); opaque pixels keep their true RGB.
+    // This avoids color halos around semi-transparent matted edges.
+    const imageData = ctx.getImageData(0, 0, cw, ch);
+    const data = imageData.data;
+    for (let j = 0; j < data.length; j += 4) {
+      if (data[j + 3] < 128) {
+        data[j] = 0;       // R
+        data[j + 1] = 255; // G
+        data[j + 2] = 0;   // B
+        data[j + 3] = 255; // A
+      } else {
+        data[j + 3] = 255;
+      }
+    }
+    ctx.putImageData(imageData, 0, 0);
+    gif.addFrame(canvas, { delay });
   }
 
   return new Promise<ExportResult>((resolve, reject) => {
@@ -129,4 +169,23 @@ export const exportSpriteSheet = async (
       resolve();
     });
   });
+};
+
+export const exportPNG = async (
+  frames: ExtractedFrame[],
+  w: number,
+  h: number
+): Promise<ExportResult | null> => {
+  const selectedFrames = getSelected(frames);
+  if (selectedFrames.length === 0) return null;
+
+  // We only export the first selected frame as PNG.
+  const frame = selectedFrames[0];
+  const resolvedDataUrl = await (w && h ? fitImageToCanvas(frame.dataUrl, w, h, 'contain') : frame.dataUrl);
+
+  const blob = await (await fetch(resolvedDataUrl)).blob();
+  const filename = 'wechat-sticker.png';
+  downloadBlob(blob, filename);
+
+  return { filename, sizeBytes: blob.size };
 };

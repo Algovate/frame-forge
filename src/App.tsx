@@ -1,21 +1,22 @@
 import { useCallback, useState } from 'react';
-import { LeftSidebar } from './components/LeftSidebar';
+import { ImportScreen } from './components/ImportScreen';
+import { Header } from './components/Header';
 import { RightSidebar } from './components/RightSidebar';
 import { FrameGallery } from './components/FrameGallery';
 import { FrameEditorModal } from './components/FrameEditorModal';
 import { ToastStack, type ToastItem, type ToastType } from './components/Toast';
 import { AmbientBackground } from './components/AmbientBackground';
 import type { ExtractedFrame, MattingMode, ProcessingPhase } from './types';
-import { extractFromGIF, extractFromVideo } from './utils/extractors';
+import { extractFromGIF, extractFromVideo, extractFromImages } from './utils/extractors';
 import { findDuplicateFrames, findLoopFrames, findJumpFrames, batchRemoveBackground, cropFrames } from './utils/processors';
 import type { PixelRect } from './utils/canvasEditor';
-import { exportZIP, exportGIF, exportSpriteSheet } from './utils/exporters';
-import { classifyStickerSource, revokeFrameUrls } from './utils/media';
+import { exportZIP, exportGIF, exportPNG, exportSpriteSheet } from './utils/exporters';
+import { classifyStickerSource, classifySourceKind, revokeFrameUrls, randomId } from './utils/media';
 import { WECHAT_STICKER_PRESET, getWechatReadiness } from './utils/wechat';
 import { Loader2 } from 'lucide-react';
 
 function App() {
-  const [sourceFile, setSourceFile] = useState<File | null>(null);
+  const [sourceFiles, setSourceFiles] = useState<File[]>([]);
   const [frames, setFrames] = useState<ExtractedFrame[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [phase, setPhase] = useState<ProcessingPhase>('idle');
@@ -69,53 +70,77 @@ function App() {
     [pushToast],
   );
 
-  /** Shared entry point for both click-input and drag-and-drop, so validation
-   *  + feedback can never diverge between the two paths. */
-  const acceptFile = useCallback(
-    (file?: File | null) => {
-      if (!file) return;
-      const kind = classifyStickerSource(file);
-      if (kind === 'gif' || kind === 'video') {
-        revokeFrameUrls(frames); // free matting output from the previous file
-        setFrames([]);
-        setSourceFile(file);
-        setLastGifSizeBytes(undefined);
-        pushToast('success', `Loaded ${file.name}`);
-        return;
-      }
-      if (kind === 'static-image') {
-        pushToast('info', 'Static image animation is not supported in this version. Use a video or GIF for dynamic stickers.');
-        return;
-      }
-      pushToast('error', 'Unsupported file. Use a video or GIF.');
-    },
-    [pushToast, frames],
-  );
+  // Validate + normalize a selection. A batch must be all static images; a single
+  // file just needs a recognized kind. Returns the files to process, or null after
+  // toasting the rejection. `batchVerb` fills the "Batch <verb> only supports…" error.
+  const validateSelection = (files: File[], batchVerb: string): File[] | null => {
+    if (!files.length) return null;
+    const isBatch = files.length > 1;
+    const kinds = files.map(classifyStickerSource);
+    const ok = isBatch ? kinds.every((k) => k === 'static-image') : !!kinds[0];
+    if (!ok) {
+      pushToast('error', isBatch ? `Batch ${batchVerb} only supports static images.` : 'Unsupported file. Use an image, video, or GIF.');
+      return null;
+    }
+    return isBatch ? files : [files[0]];
+  };
 
-  const processSource = () => {
-    if (!sourceFile) return;
-    const kind = classifyStickerSource(sourceFile);
-    if (kind !== 'gif' && kind !== 'video') {
-      pushToast('error', 'Unsupported file. Use a video or GIF.');
+  // Shared entry point for both click-input and drag-and-drop
+  const acceptFiles = (files: File[]) => {
+    const filesToProcess = validateSelection(files, 'loading');
+    if (!filesToProcess) return;
+    revokeFrameUrls(frames); // free matting output from the previous file
+    setFrames([]);
+    setSourceFiles(filesToProcess);
+    setLastGifSizeBytes(undefined);
+    if (classifySourceKind(filesToProcess) === 'video') {
+      pushToast('success', `Loaded ${filesToProcess[0].name}`);
+    } else {
+      // Auto-process static images, GIFs, and batches
+      processSource(filesToProcess, false);
+    }
+  };
+
+  const appendFiles = (files: File[]) => {
+    const filesToProcess = validateSelection(files, 'appending');
+    if (!filesToProcess) return;
+    processSource(filesToProcess, true);
+  };
+
+  const processSource = (filesToProcess: File[] = sourceFiles, append: boolean = false) => {
+    if (filesToProcess.length === 0) return;
+    const kind = classifySourceKind(filesToProcess);
+    if (!kind) {
+      pushToast('error', 'Unsupported file. Use an image, video, or GIF.');
       return;
     }
     runProcessing(
       'extracting',
       'Extracting frames...',
       async () => {
-        revokeFrameUrls(frames); // free matting output before re-extracting
-        setFrames([]);
-        setLastGifSizeBytes(undefined);
-        let extracted: ExtractedFrame[];
-        if (kind === 'gif') {
-          extracted = await extractFromGIF(sourceFile, (f) => setFrames([...f]));
-        } else {
-          extracted = (
-            await extractFromVideo(sourceFile, fps, startTime, endTime, (f) => setFrames([...f]))
-          ).frames;
+        if (!append) {
+          revokeFrameUrls(frames); // free matting output before re-extracting
+          setFrames([]);
+          setLastGifSizeBytes(undefined);
         }
+        let extracted: ExtractedFrame[] = [];
+        if (kind === 'gif') {
+          extracted = await extractFromGIF(filesToProcess[0], (f) => {
+            if (!append) setFrames([...f]);
+          });
+        } else if (kind === 'video') {
+          extracted = (
+            await extractFromVideo(filesToProcess[0], fps, startTime, endTime, (f) => {
+              if (!append) setFrames([...f]);
+            })
+          ).frames;
+        } else {
+          // static-image / static-images-batch share one parallel decoder
+          extracted = await extractFromImages(filesToProcess, fps);
+        }
+        setFrames((prev) => append ? [...prev, ...extracted] : extracted);
         const n = extracted.length;
-        pushToast('success', `Extracted ${n} frame${n === 1 ? '' : 's'}`);
+        pushToast('success', append ? `Appended ${n} frame${n === 1 ? '' : 's'}` : `Extracted ${n} frame${n === 1 ? '' : 's'}`);
       },
       'Could not extract frames from that file',
     );
@@ -203,6 +228,20 @@ function App() {
       }
     }, 'GIF export failed');
   };
+  const handleExportPNG = () => {
+    const selectedCount = frames.filter((f) => f.selected).length;
+    if (selectedCount === 0) return pushToast('info', 'Select at least one frame first');
+    if (selectedCount > 1) {
+      // Export as ZIP if multiple are selected
+      return handleExportZIP();
+    }
+    runProcessing('exporting', 'Exporting PNG...', async () => {
+      const result = await exportPNG(frames, exportWidth, exportHeight);
+      if (result) {
+        pushToast('success', `PNG ready (${Math.round(result.sizeBytes / 1024)} KB)`);
+      }
+    }, 'PNG export failed');
+  };
   const handleExportSpriteSheet = () => {
     if (!frames.some((f) => f.selected)) return pushToast('info', 'Select at least one frame first');
     runProcessing(
@@ -234,6 +273,45 @@ function App() {
   const selectAll = () => {
     setFrames(frames.map((f) => ({ ...f, selected: true })));
     setLastGifSizeBytes(undefined);
+  };
+
+  const handleSelectNone = () => {
+    setFrames(frames.map((f) => ({ ...f, selected: false })));
+    setLastGifSizeBytes(undefined);
+  };
+
+  const handleSelectOnly = (id: string) => {
+    setFrames(frames.map((f) => ({ ...f, selected: f.id === id })));
+    setLastGifSizeBytes(undefined);
+  };
+
+  const handleSelectRange = (startId: string, endId: string) => {
+    const startIndex = frames.findIndex((f) => f.id === startId);
+    const endIndex = frames.findIndex((f) => f.id === endId);
+    if (startIndex === -1 || endIndex === -1) return;
+    
+    const min = Math.min(startIndex, endIndex);
+    const max = Math.max(startIndex, endIndex);
+    
+    setFrames(frames.map((f, i) => ({
+      ...f,
+      selected: (i >= min && i <= max) || f.selected,
+    })));
+    setLastGifSizeBytes(undefined);
+  };
+
+  const handleDuplicateSelected = () => {
+    const selectedFrames = frames.filter((f) => f.selected);
+    if (selectedFrames.length === 0) return pushToast('info', 'Select at least one frame first');
+
+    const duplicates = selectedFrames.map((f) => ({
+      ...f,
+      id: randomId('dup'),
+      selected: false,
+    }));
+    setFrames([...frames, ...duplicates]);
+    setLastGifSizeBytes(undefined);
+    pushToast('success', `Duplicated ${selectedFrames.length} frame${selectedFrames.length === 1 ? '' : 's'}`);
   };
 
   const handleSaveEdit = (
@@ -270,83 +348,106 @@ function App() {
   const editingFrame = editingFrameIndex >= 0 ? frames[editingFrameIndex] : null;
   const previousEditingFrame = editingFrameIndex > 0 ? frames[editingFrameIndex - 1] : null;
   const nextEditingFrame = editingFrameIndex >= 0 && editingFrameIndex < frames.length - 1 ? frames[editingFrameIndex + 1] : null;
-  const sourceKind = sourceFile ? classifyStickerSource(sourceFile) : null;
+  const sourceKind = classifySourceKind(sourceFiles);
   const readiness = getWechatReadiness(frames, exportWidth, exportHeight, gifDelay, lastGifSizeBytes);
+
+  const handleReset = () => {
+    setFrames([]);
+    setSourceFiles([]);
+    setLastGifSizeBytes(undefined);
+    setEditingFrameId(null);
+  };
 
   return (
     <div className="h-screen flex flex-col overflow-hidden px-4 sm:px-6 lg:px-8 py-4 text-foreground relative">
       <AmbientBackground />
 
-      <main className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4 max-w-[1600px] w-full mx-auto relative">
-        <LeftSidebar
-          sourceFile={sourceFile}
-          isProcessing={isProcessing}
-          phase={phase}
-          fps={fps}
-          setFps={setFps}
-          startTime={startTime}
-          setStartTime={setStartTime}
-          endTime={endTime}
-          setEndTime={setEndTime}
-          sourceKind={sourceKind}
-          onFileSelected={acceptFile}
-          onProcessSource={processSource}
+      <div className="max-w-[1600px] w-full mx-auto flex-none z-10 relative">
+        <Header 
+          onReset={frames.length > 0 ? handleReset : undefined} 
+          onAppendFiles={frames.length > 0 ? appendFiles : undefined}
         />
+      </div>
 
-        <section className="lg:col-span-6 flex flex-col relative min-h-0">
-          {isProcessing && (
-            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center rounded-card bg-black/60 backdrop-blur-sm">
-              <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
-              <p className="text-lg font-medium">{processMsg}</p>
-            </div>
-          )}
-          <FrameGallery
-            frames={frames}
-            onToggleSelection={toggleFrameSelection}
-            onSelectAll={selectAll}
-            onDeleteSelected={deleteSelected}
-            onDeleteUnselected={deleteUnselected}
-            onFindDuplicates={handleFindDuplicates}
-            onFindLoops={handleFindLoops}
-            onFindJumps={handleFindJumps}
-            onInvertSelection={handleInvertSelection}
-            onReverseFrames={handleReverseFrames}
-            onRemoveSubsequent={handleRemoveSubsequent}
-            onRemovePreceding={handleRemovePreceding}
-            onEditFrame={setEditingFrameId}
+      <main className="flex-1 min-h-0 max-w-[1600px] w-full mx-auto relative flex flex-col">
+        {frames.length === 0 ? (
+          <ImportScreen
+            sourceFiles={sourceFiles}
+            isProcessing={isProcessing}
+            phase={phase}
+            fps={fps}
+            setFps={setFps}
+            startTime={startTime}
+            setStartTime={setStartTime}
+            endTime={endTime}
+            setEndTime={setEndTime}
+            sourceKind={sourceKind}
+            onFilesSelected={acceptFiles}
+            onProcessSource={() => processSource()}
           />
+        ) : (
+          <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4 w-full">
+            <section className="lg:col-span-9 flex flex-col relative min-h-0">
+              {isProcessing && (
+                <div className="absolute inset-0 z-50 flex flex-col items-center justify-center rounded-card bg-black/60 backdrop-blur-sm">
+                  <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
+                  <p className="text-lg font-medium">{processMsg}</p>
+                </div>
+              )}
+            <FrameGallery
+              frames={frames}
+              onToggleSelection={toggleFrameSelection}
+              onSelectAll={selectAll}
+              onDeleteSelected={deleteSelected}
+              onDeleteUnselected={deleteUnselected}
+              onFindDuplicates={handleFindDuplicates}
+              onFindLoops={handleFindLoops}
+              onFindJumps={handleFindJumps}
+              onInvertSelection={handleInvertSelection}
+              onReverseFrames={handleReverseFrames}
+              onRemoveSubsequent={handleRemoveSubsequent}
+              onRemovePreceding={handleRemovePreceding}
+              onEditFrame={setEditingFrameId}
+              onDuplicateSelected={handleDuplicateSelected}
+              onSelectNone={handleSelectNone}
+              onSelectRange={handleSelectRange}
+              onSelectOnly={handleSelectOnly}
+            />
         </section>
 
-        <RightSidebar
-          frames={frames}
-          isProcessing={isProcessing}
-          gifDelay={gifDelay}
-          setGifDelay={(delay) => {
-            setGifDelay(delay);
-            setLastGifSizeBytes(undefined);
-          }}
-          exportWidth={exportWidth}
-          setExportWidth={(width) => {
-            setExportWidth(width);
-            setLastGifSizeBytes(undefined);
-          }}
-          exportHeight={exportHeight}
-          setExportHeight={(height) => {
-            setExportHeight(height);
-            setLastGifSizeBytes(undefined);
-          }}
-          spriteCols={spriteCols}
-          setSpriteCols={setSpriteCols}
-          spritePadding={spritePadding}
-          setSpritePadding={setSpritePadding}
-          mattingMode={mattingMode}
-          setMattingMode={setMattingMode}
-          readiness={readiness}
-          onRemoveBackgrounds={handleRemoveBackgrounds}
-          onExportZIP={handleExportZIP}
-          onExportGIF={handleExportGIF}
-          onExportSpriteSheet={handleExportSpriteSheet}
-        />
+            <RightSidebar
+              frames={frames}
+              isProcessing={isProcessing}
+              gifDelay={gifDelay}
+              setGifDelay={(delay) => {
+                setGifDelay(delay);
+                setLastGifSizeBytes(undefined);
+              }}
+              exportWidth={exportWidth}
+              setExportWidth={(width) => {
+                setExportWidth(width);
+                setLastGifSizeBytes(undefined);
+              }}
+              exportHeight={exportHeight}
+              setExportHeight={(height) => {
+                setExportHeight(height);
+                setLastGifSizeBytes(undefined);
+              }}
+              spriteCols={spriteCols}
+              setSpriteCols={setSpriteCols}
+              spritePadding={spritePadding}
+              setSpritePadding={setSpritePadding}
+              mattingMode={mattingMode}
+              setMattingMode={setMattingMode}
+              readiness={readiness}
+              onRemoveBackgrounds={handleRemoveBackgrounds}
+              onExportZIP={handleExportZIP}
+              onExportGIF={handleExportGIF}
+              onExportPNG={handleExportPNG}
+              onExportSpriteSheet={handleExportSpriteSheet}
+            />
+          </div>
+        )}
       </main>
 
       <ToastStack toasts={toasts} onDismiss={dismissToast} />

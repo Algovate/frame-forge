@@ -13,7 +13,7 @@ export interface ExtractedFrame {
   selected: boolean;
 }
 
-export type StickerSourceKind = 'gif' | 'video' | 'static-image';
+export type StickerSourceKind = 'gif' | 'video' | 'static-image' | 'static-images-batch';
 
 export type MattingMode = 'edge-key' | 'conservative' | 'balanced';
 

@@ -26,6 +26,7 @@
   /* Semantic */
   --color-dedupe: #8b5cf6;      /* violet — Smart Deduplicate */
   --color-matte: #38bdf8;        /* sky    — AI Batch Matting */
+  --color-jump: #f59e0b;         /* amber  — Find Jump Frames */
   --color-destructive: #ef4444;
 
   /* Typography */
@@ -87,6 +88,14 @@ body {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+/* ── Button cursor ───────────────────────────────────────────────────────────
+   Native <button> uses the arrow cursor; normalize to pointer so controls read
+   as interactive. Disabled buttons keep not-allowed — the disabled:cursor-not-
+   allowed utility has higher specificity and overrides this. */
+button:not(:disabled) {
+  cursor: pointer;
 }
 
 /* ── Ambient gradient blobs ────────────────────────────────────────────────── */

@@ -1,5 +1,6 @@
 import { parseGIF, decompressFrames } from 'gifuct-js';
 import type { ExtractedFrame } from '../types';
+import { loadImage, randomId } from './media';
 
 /** Sanity cap: beyond this, full-resolution PNG data URLs in React state
  *  would OOM the tab. Surfaced as a clear error rather than a silent crash. */
@@ -56,7 +57,7 @@ export const extractFromGIF = async (
     ctx.drawImage(tempCanvas, 0, 0);
 
     extracted.push({
-      id: `gif_${i}`,
+      id: randomId('gif', i),
       dataUrl: canvas.toDataURL('image/png'),
       width: canvas.width,
       height: canvas.height,
@@ -166,7 +167,7 @@ export const extractFromVideo = async (
     for (let i = 0; i < frameCount; i++) {
       const t = clampedStart + i * timeStep;
       const dataUrl = await captureFrame(t);
-      extracted.push({ id: `vid_${i}`, dataUrl, width: canvas.width, height: canvas.height, time: t, selected: true });
+      extracted.push({ id: randomId('vid', i), dataUrl, width: canvas.width, height: canvas.height, time: t, selected: true });
       if (onProgress) onProgress([...extracted]);
       await new Promise((r) => setTimeout(r, 0)); // yield to UI
     }
@@ -176,3 +177,32 @@ export const extractFromVideo = async (
     URL.revokeObjectURL(src);
   }
 };
+
+/** Decode one or more static images in parallel, assigning each an index-based
+ *  id and an evenly-spaced timeline position (so a batch reads back as a
+ *  sequence at `fps`). A single image collapses to id `img_0` at time 0. */
+export const extractFromImages = async (files: File[], fps: number): Promise<ExtractedFrame[]> =>
+  Promise.all(
+    files.map(async (file, i) => {
+      const url = URL.createObjectURL(file);
+      try {
+        const img = await loadImage(url);
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('No 2D context available');
+        ctx.drawImage(img, 0, 0);
+        return {
+          id: randomId('img', i),
+          dataUrl: canvas.toDataURL('image/png'),
+          width: canvas.width,
+          height: canvas.height,
+          time: i * (1 / fps),
+          selected: true,
+        };
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    }),
+  );

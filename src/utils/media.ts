@@ -14,6 +14,20 @@ export const classifyStickerSource = (file: File): StickerSourceKind | null => {
   return null;
 };
 
+/** Classify a whole selection: a multi-file load is a static-image batch;
+ *  a single file is classified individually. The batch arity lives here so
+ *  call sites don't each re-derive `length > 1 ? 'static-images-batch' : ...`. */
+export const classifySourceKind = (files: File[]): StickerSourceKind | null =>
+  files.length > 1 ? 'static-images-batch' : files.length === 1 ? classifyStickerSource(files[0]) : null;
+
+/** Short, non-cryptographic id for frame instances — just needs to be unique
+ *  within a session (React keys, selection, matting source tracking). Pass an
+ *  index to fold it into the id for readable ordering (`gif_0`, `img_3`). */
+export const randomId = (prefix: string, index?: number): string => {
+  const rand = Math.random().toString(36).slice(2, 9);
+  return index === undefined ? `${prefix}_${rand}` : `${prefix}_${index}_${rand}`;
+};
+
 /** Load an HTMLImageElement from any src the browser accepts
  *  (data URL, blob URL, http URL). Rejects on error so callers can't hang
  *  forever on a corrupt/revoked source. */

@@ -19,6 +19,10 @@ interface FrameGalleryProps {
   onRemoveSubsequent?: (fromId: string) => void;
   onRemovePreceding?: (toId: string) => void;
   onEditFrame?: (id: string) => void;
+  onDuplicateSelected?: () => void;
+  onSelectNone?: () => void;
+  onSelectRange?: (startId: string, endId: string) => void;
+  onSelectOnly?: (id: string) => void;
 }
 
 const CTRL =
@@ -45,6 +49,10 @@ export function FrameGallery({
   onRemoveSubsequent,
   onRemovePreceding,
   onEditFrame,
+  onDuplicateSelected,
+  onSelectNone,
+  onSelectRange,
+  onSelectOnly,
 }: FrameGalleryProps) {
   const [threshold, setThreshold] = useState(65);
   const [lastClickedId, setLastClickedId] = useState<string | null>(null);
@@ -52,15 +60,30 @@ export function FrameGallery({
   const selectedCount = frames.filter((f) => f.selected).length;
   const padWidth = String(Math.max(frames.length, 1)).length;
 
-  const handleToggleSelection = (id: string) => {
+  const handleToggleSelection = (e: React.MouseEvent | React.KeyboardEvent, id: string) => {
+    e.preventDefault();
+    
+    // Shift + Click for range selection
+    if (e.shiftKey && lastClickedId && onSelectRange) {
+      onSelectRange(lastClickedId, id);
+      return;
+    }
+
+    // Alt/Option + Click or Cmd/Ctrl + Click on desktop to select ONLY this frame
+    if ((e.altKey || e.metaKey || e.ctrlKey) && onSelectOnly) {
+      setLastClickedId(id);
+      onSelectOnly(id);
+      return;
+    }
+
+    // Default: toggle
     setLastClickedId(id);
     onToggleSelection(id);
   };
 
   const handleFrameKeyDown = (event: KeyboardEvent<HTMLDivElement>, id: string) => {
     if (event.key !== 'Enter' && event.key !== ' ') return;
-    event.preventDefault();
-    handleToggleSelection(id);
+    handleToggleSelection(event, id);
   };
 
   return (
@@ -79,6 +102,9 @@ export function FrameGallery({
         {frames.length > 0 && (
           <div className="flex flex-wrap gap-2 items-center w-full">
             <button type="button" onClick={() => onSelectAll()} className={CTRL}>Select all</button>
+            {onSelectNone && (
+              <button type="button" onClick={() => onSelectNone()} className={CTRL}>Select none</button>
+            )}
             <button type="button" onClick={() => onInvertSelection?.()} className={CTRL}>
               <Shuffle className="w-3.5 h-3.5 inline mr-1" /> Invert
             </button>
@@ -128,7 +154,7 @@ export function FrameGallery({
                 </button>
                 <button 
                   onClick={() => onFindJumps?.(threshold)} 
-                  className="flex items-center gap-1 text-amber-500 hover:bg-amber-500/10 px-2 py-0.5 rounded transition-colors"
+                  className="flex items-center gap-1 text-jump hover:bg-jump/10 px-2 py-0.5 rounded transition-colors"
                   title="Find jump frames"
                 >
                   <Zap className="w-3.5 h-3.5" />
@@ -146,6 +172,13 @@ export function FrameGallery({
             </div>
 
             <div className="flex gap-1 ml-auto shrink-0 border-l border-hairline pl-2">
+              {onDuplicateSelected && (
+                <button type="button" onClick={onDuplicateSelected} className={`${CTRL} hover:bg-white/10`} title="Duplicate selected frames">
+                  <span className="inline-flex items-center gap-1">
+                    <Copy className="w-3.5 h-3.5" aria-hidden="true" /> Duplicate
+                  </span>
+                </button>
+              )}
               <button type="button" onClick={onDeleteSelected} className={`${CTRL} text-destructive hover:bg-destructive/10`}>
                 <span className="inline-flex items-center gap-1">
                   <Trash2 className="w-3.5 h-3.5" aria-hidden="true" /> Selected
@@ -177,12 +210,12 @@ export function FrameGallery({
                 key={frame.id}
                 role="button"
                 tabIndex={0}
-                onClick={() => handleToggleSelection(frame.id)}
+                onClick={(e) => handleToggleSelection(e, frame.id)}
                 onKeyDown={(event) => handleFrameKeyDown(event, frame.id)}
                 aria-pressed={frame.selected}
                 aria-label={`Frame ${index + 1}${frame.selected ? ', selected' : ', not selected'}`}
                 style={{ aspectRatio: `${frame.width ?? 16} / ${frame.height ?? 9}` }}
-                className={`group relative rounded-control overflow-hidden border cursor-pointer transition-all duration-150 frame-checker ${
+                className={`group relative rounded-control overflow-hidden border cursor-pointer transition-[transform,border-color,box-shadow] duration-150 frame-checker ${
                   frame.selected
                     ? 'border-primary ring-2 ring-primary/60 scale-[1.02] shadow-[0_8px_24px_-12px_var(--accent-glow-strong)]'
                     : 'border-hairline hover:border-primary/50 hover:scale-[1.01]'
@@ -208,10 +241,15 @@ export function FrameGallery({
                     e.stopPropagation();
                     onEditFrame?.(frame.id);
                   }}
-                  className="absolute bottom-1.5 right-1.5 p-1.5 rounded-md bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80 backdrop-blur-sm z-10"
+                  aria-label="Edit frame"
+                  className={`absolute bottom-1.5 right-1.5 p-1.5 rounded-md bg-black/60 text-white transition-opacity hover:bg-black/80 backdrop-blur-sm z-10 ${
+                    frame.selected
+                      ? 'opacity-100'
+                      : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100'
+                  }`}
                   title="Edit Frame"
                 >
-                  <Pen className="w-3.5 h-3.5" />
+                  <Pen className="w-3.5 h-3.5" aria-hidden="true" />
                 </button>
               </div>
             ))}

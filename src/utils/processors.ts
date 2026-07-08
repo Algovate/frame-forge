@@ -356,18 +356,18 @@ export const cropFrames = async (frames: ExtractedFrame[], rect: PixelRect, sele
   Promise.all(
     frames.map(async (frame) => {
       if (selectedOnly && !frame.selected) return frame;
-      const img = await loadImage(frame.dataUrl);
+      // The data URL and its pre-matte source decode independently — load both at once.
+      const [img, sourceImg] = await Promise.all([
+        loadImage(frame.dataUrl),
+        frame.sourceDataUrl ? loadImage(frame.sourceDataUrl) : undefined,
+      ]);
       const cropped = cropToCanvas(img, rect);
       if (!cropped) return frame;
-      let sourceDataUrl = frame.sourceDataUrl;
-      if (sourceDataUrl) {
-        const sourceImg = await loadImage(sourceDataUrl);
-        sourceDataUrl = cropToCanvas(sourceImg, rect)?.toDataURL('image/png') ?? sourceDataUrl;
-      }
+      const croppedSource = sourceImg ? cropToCanvas(sourceImg, rect) : undefined;
       return {
         ...frame,
         dataUrl: cropped.toDataURL('image/png'),
-        sourceDataUrl,
+        sourceDataUrl: croppedSource?.toDataURL('image/png') ?? frame.sourceDataUrl,
         width: cropped.width,
         height: cropped.height,
       };
