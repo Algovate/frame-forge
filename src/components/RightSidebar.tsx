@@ -74,7 +74,7 @@ export function RightSidebar(props: RightSidebarProps) {
             <img
               src={previewFrame.dataUrl}
               alt="Selected frame preview"
-              className="max-w-full max-h-full object-contain drop-shadow-2xl"
+              className="max-w-full max-h-full object-contain"
             />
           </div>
         ) : (

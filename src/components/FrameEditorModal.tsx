@@ -1188,7 +1188,7 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
             >
               <canvas
                 ref={canvasRef}
-                className="shadow-pop bg-transparent"
+                className="bg-transparent"
                 onPointerDown={handlePointerDown}
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerUp}

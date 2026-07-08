@@ -52,7 +52,7 @@ export function AnimationPreview({ frames, delayMs }: AnimationPreviewProps) {
         <img
           src={currentFrame.dataUrl}
           alt={`Preview frame ${safeIndex}`}
-          className="max-w-full max-h-full object-contain drop-shadow-2xl"
+          className="max-w-full max-h-full object-contain"
         />
 
           <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between pointer-events-none">
