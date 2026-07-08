@@ -172,18 +172,22 @@ export const batchRemoveBackground = async (
   return newFrames;
 };
 
-const mattingConfigForMode = (mode: MattingMode): Config => ({
-  model: mode === 'conservative' ? 'isnet' : 'isnet_fp16',
-  output: { format: 'image/png' },
-});
+/** AI matting handles only the two non-edge modes — `edge-key` is routed to
+ *  removeEdgeBackground in batchRemoveBackground, so it has no entry here.
+ *  Keeping per-mode policy (model + edge recovery) in one table means a new
+ *  mode is a single edit rather than two parallel special-casing branches. */
+type AiMattingMode = Exclude<MattingMode, 'edge-key'>;
+const AI_MATTING_POLICY: Record<AiMattingMode, { model: Config['model']; recoverEdges: boolean }> = {
+  conservative: { model: 'isnet', recoverEdges: true },
+  balanced: { model: 'isnet_fp16', recoverEdges: false },
+};
 
-async function removeAiBackground(sourceDataUrl: string, mode: MattingMode): Promise<Blob> {
+async function removeAiBackground(sourceDataUrl: string, mode: AiMattingMode): Promise<Blob> {
+  const { model, recoverEdges } = AI_MATTING_POLICY[mode];
   const res = await fetch(sourceDataUrl);
   const blob = await res.blob();
-  const mattedBlob = await removeBackground(blob, mattingConfigForMode(mode));
-  return mode === 'conservative'
-    ? recoverForegroundEdges(blob, mattedBlob, EDGE_RECOVERY_RADIUS)
-    : mattedBlob;
+  const mattedBlob = await removeBackground(blob, { model, output: { format: 'image/png' } });
+  return recoverEdges ? recoverForegroundEdges(blob, mattedBlob, EDGE_RECOVERY_RADIUS) : mattedBlob;
 }
 
 /** Fast color-key cleanup: sample the background from the four corners and

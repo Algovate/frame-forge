@@ -13,7 +13,6 @@ export const getWechatReadiness = (
   width: number,
   height: number,
   gifDelay: number,
-  actualSizeBytes?: number,
 ): WechatReadiness => {
   const selectedCount = getSelectedFrameCount(frames);
   const isSquare = width === height;
@@ -23,16 +22,13 @@ export const getWechatReadiness = (
   if (selectedCount === 0) messages.push('Select at least one sticker frame.');
   if (!isWechatSize) messages.push('Set output size to 240 x 240.');
   if (!isSquare) messages.push('Use a square canvas for WeChat stickers.');
-  if (messages.length === 0 && !actualSizeBytes) messages.push('Dimensions ready. Export once to measure file size.');
-  if (messages.length === 0 && actualSizeBytes) messages.push('Ready for WeChat GIF export.');
-
+  if (messages.length === 0) messages.push('Ready for WeChat GIF export.');
   return {
     selectedCount,
     durationMs: selectedCount * gifDelay,
     isSquare,
     isWechatSize,
     hasFrames: selectedCount > 0,
-    actualSizeBytes,
     messages,
   };
 };

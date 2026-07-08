@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { HexColorPicker } from 'react-colorful';
 import ReactCrop, { type Crop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
@@ -23,10 +23,13 @@ import {
   ZoomIn,
   ZoomOut,
   Crop as CropIcon,
-  Check as CheckIcon
+  Check as CheckIcon,
+  Grid3X3,
 } from 'lucide-react';
 import type { ExtractedFrame } from '../types';
 import { loadImage } from '../utils/media';
+import { createGridRects, normalizeGridSplitOptions, splitCanvasIntoGridFrames } from '../utils/gridExtractor';
+import { finiteOr } from '../utils/numbers';
 import {
   clampPixelRect,
   colorToHex,
@@ -50,9 +53,10 @@ interface FrameEditorModalProps {
   onClose: () => void;
   onSave: (id: string, newUrl: string, meta?: { width?: number; height?: number; close?: boolean; message?: string }) => void;
   onBatchCrop?: (rect: PixelRect) => void;
+  onSplitGrid?: (id: string, frames: ExtractedFrame[]) => void;
 }
 
-type Tool = 'pen' | 'eraser' | 'fill' | 'replace' | 'eyedropper' | 'rect' | 'circle' | 'soften' | 'crop';
+type Tool = 'pen' | 'eraser' | 'fill' | 'replace' | 'eyedropper' | 'rect' | 'circle' | 'soften' | 'crop' | 'grid';
 type BlendMode = 'source-over' | 'overlay' | 'color-dodge' | 'color-burn';
 type OnionMode = 'none' | 'previous' | 'next';
 type ShapeMode = 'stroke' | 'fill' | 'both';
@@ -125,7 +129,7 @@ function SliderRow({
   );
 }
 
-export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onSave, onBatchCrop }: FrameEditorModalProps) {
+export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onSave, onBatchCrop, onSplitGrid }: FrameEditorModalProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
   const blurredCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -145,6 +149,9 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
   const [onionOpacity, setOnionOpacity] = useState(35);
   const [shapeMode, setShapeMode] = useState<ShapeMode>('stroke');
   const [showMobileProperties, setShowMobileProperties] = useState(false);
+  const [gridRows, setGridRows] = useState(3);
+  const [gridCols, setGridCols] = useState(4);
+  const [gridPadding, setGridPadding] = useState(0);
 
   // History state for Undo/Redo — each entry is a canvas snapshot dataURL.
   const [history, setHistory] = useState<string[]>([]);
@@ -219,6 +226,7 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
     circle: { color: true, size: true, opacity: true },
     soften: { size: true, hardness: true },
     crop: {},
+    grid: {},
   };
   const props = toolProps[activeTool] ?? {};
   const showColor = !!props.color;
@@ -232,6 +240,23 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
     ? displayCropToPixelRect(crop, scale, canvasDimensions.width, canvasDimensions.height)
     : null;
   const onionFrame = onionMode === 'previous' ? previousFrame : onionMode === 'next' ? nextFrame : null;
+  // Grid preview geometry: derive it once per relevant change instead of every
+  // render — the modal re-renders on each pointer-move / zoom tick while editing.
+  const { normalizedGrid, gridFrameCount, gridCellRects, gridPreviewRects } = useMemo(() => {
+    const normalized = normalizeGridSplitOptions({ rows: gridRows, cols: gridCols, padding: gridPadding });
+    const showGridPreview = activeTool === 'grid' && canvasDimensions.width > 0 && canvasDimensions.height > 0;
+    // The dashed cell outlines only render when padding > 0, so skip that pass then.
+    return {
+      normalizedGrid: normalized,
+      gridFrameCount: normalized.rows * normalized.cols,
+      gridCellRects: showGridPreview && normalized.padding > 0
+        ? createGridRects(canvasDimensions.width, canvasDimensions.height, { ...normalized, padding: 0 })
+        : [],
+      gridPreviewRects: showGridPreview
+        ? createGridRects(canvasDimensions.width, canvasDimensions.height, normalized)
+        : [],
+    };
+  }, [activeTool, gridRows, gridCols, gridPadding, canvasDimensions.width, canvasDimensions.height]);
 
   const setViewportScale = useCallback((nextScale: number, anchor?: { x: number; y: number }) => {
     setScale((prevScale) => {
@@ -499,6 +524,7 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
     if (!isPointInBounds(pos, canvas.width, canvas.height)) return;
+    if (activeTool === 'grid') return;
 
     if (activeTool === 'fill') {
       const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -740,6 +766,20 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
     });
   };
 
+  const handleSplitGrid = () => {
+    if (!frame || !canvasRef.current || !onSplitGrid) return;
+    const splitFrames = splitCanvasIntoGridFrames(canvasRef.current, {
+      rows: gridRows,
+      cols: gridCols,
+      padding: gridPadding,
+    }, {
+      startTime: frame.time,
+      timeStep: 0.1,
+    });
+    setIsDirty(false);
+    onSplitGrid(frame.id, splitFrames);
+  };
+
   const resetView = () => {
     setPan({ x: 0, y: 0 });
     setViewportScale(1);
@@ -757,9 +797,61 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
 
   const cursorFor = (): string => {
     if (isPanning) return 'grab';
+    if (activeTool === 'grid') return 'default';
     if (activeTool === 'fill' || activeTool === 'replace' || activeTool === 'eyedropper') return 'pointer';
     return 'crosshair';
   };
+
+  const gridSplitContent = onSplitGrid ? (
+    <div className="space-y-3">
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted/70">Grid split</p>
+      <div className="grid grid-cols-3 gap-2">
+        <label className="space-y-1">
+          <span className="block text-[10px] font-semibold uppercase tracking-wider text-muted/70">Rows</span>
+          <input
+            type="number"
+            min={1}
+            max={20}
+            value={gridRows}
+            onChange={(e) => setGridRows(finiteOr(e.currentTarget.valueAsNumber, 1))}
+            className={CROP_INPUT_CLASS}
+          />
+        </label>
+        <label className="space-y-1">
+          <span className="block text-[10px] font-semibold uppercase tracking-wider text-muted/70">Cols</span>
+          <input
+            type="number"
+            min={1}
+            max={20}
+            value={gridCols}
+            onChange={(e) => setGridCols(finiteOr(e.currentTarget.valueAsNumber, 1))}
+            className={CROP_INPUT_CLASS}
+          />
+        </label>
+        <label className="space-y-1">
+          <span className="block text-[10px] font-semibold uppercase tracking-wider text-muted/70">Pad</span>
+          <input
+            type="number"
+            min={0}
+            max={200}
+            value={gridPadding}
+            onChange={(e) => setGridPadding(finiteOr(e.currentTarget.valueAsNumber, 0))}
+            className={CROP_INPUT_CLASS}
+          />
+        </label>
+      </div>
+      <button
+        type="button"
+        onClick={handleSplitGrid}
+        className="w-full min-h-[40px] rounded-control bg-primary hover:bg-primary-hover text-white text-sm font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-[0_0_16px_var(--accent-glow)]"
+      >
+        <Grid3X3 className="w-4 h-4" aria-hidden="true" /> Split into {gridFrameCount} frames
+      </button>
+      <p className="text-xs text-muted leading-relaxed">
+        Replaces this frame with grid cells from the current canvas.
+      </p>
+    </div>
+  ) : null;
 
   const propertiesContent = (
     <div className="space-y-5">
@@ -940,6 +1032,8 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
         </div>
       )}
 
+      {activeTool === 'grid' && gridSplitContent}
+
       {(previousFrame || nextFrame) && (
         <fieldset className="space-y-3">
           <legend className="text-[11px] font-semibold uppercase tracking-wider text-muted/70">Onion skin</legend>
@@ -1062,6 +1156,18 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
             >
               <CropIcon className="w-5 h-5" aria-hidden="true" />
             </button>
+            {onSplitGrid && (
+              <button
+                type="button"
+                onClick={() => setActiveTool('grid')}
+                aria-pressed={activeTool === 'grid'}
+                aria-label="Grid split"
+                title="Grid split"
+                className={toolButtonClass(activeTool === 'grid')}
+              >
+                <Grid3X3 className="w-5 h-5" aria-hidden="true" />
+              </button>
+            )}
           </nav>
 
           {/* Canvas */}
@@ -1108,6 +1214,73 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
                     mixBlendMode: 'difference',
                   }}
                 />
+              )}
+
+              {activeTool === 'grid' && gridPreviewRects.length > 0 && (
+                <svg
+                  aria-hidden="true"
+                  className="absolute inset-0 pointer-events-none z-20"
+                  viewBox={`0 0 ${canvasDimensions.width} ${canvasDimensions.height}`}
+                  preserveAspectRatio="none"
+                >
+                  <rect
+                    x={0}
+                    y={0}
+                    width={canvasDimensions.width}
+                    height={canvasDimensions.height}
+                    fill="rgba(10, 11, 18, 0.16)"
+                  />
+                  {normalizedGrid.padding > 0 && gridCellRects.map((rect, i) => (
+                    <rect
+                      key={`cell-${rect.x}-${rect.y}-${i}`}
+                      x={rect.x}
+                      y={rect.y}
+                      width={rect.width}
+                      height={rect.height}
+                      fill="none"
+                      stroke="rgba(255, 255, 255, 0.42)"
+                      strokeDasharray="6 5"
+                      strokeWidth={1}
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  ))}
+                  {gridPreviewRects.map((rect, i) => (
+                    <g key={`${rect.x}-${rect.y}-${i}`}>
+                      <rect
+                        x={rect.x}
+                        y={rect.y}
+                        width={rect.width}
+                        height={rect.height}
+                        fill="rgba(99, 102, 241, 0.08)"
+                        stroke="rgba(129, 140, 248, 0.95)"
+                        strokeWidth={Math.max(1, 2 / scale)}
+                        vectorEffect="non-scaling-stroke"
+                      />
+                      <rect
+                        x={rect.x + Math.max(2, 4 / scale)}
+                        y={rect.y + Math.max(2, 4 / scale)}
+                        width={Math.max(18, 26 / scale)}
+                        height={Math.max(14, 20 / scale)}
+                        rx={Math.max(2, 4 / scale)}
+                        fill="rgba(10, 11, 18, 0.78)"
+                        stroke="rgba(255, 255, 255, 0.24)"
+                        strokeWidth={1}
+                        vectorEffect="non-scaling-stroke"
+                      />
+                      <text
+                        x={rect.x + Math.max(11, 17 / scale)}
+                        y={rect.y + Math.max(12, 18 / scale)}
+                        fill="white"
+                        fontSize={Math.max(9, 12 / scale)}
+                        fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                      >
+                        {String(i + 1).padStart(2, '0')}
+                      </text>
+                    </g>
+                  ))}
+                </svg>
               )}
 
               {/* Crop Overlay */}
@@ -1372,6 +1545,8 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
                   )}
                 </div>
               )}
+
+              {activeTool === 'grid' && gridSplitContent}
 
               {(previousFrame || nextFrame) && (
                 <fieldset className="space-y-3">

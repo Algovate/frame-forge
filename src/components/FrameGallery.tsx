@@ -1,4 +1,4 @@
-import { Image as ImageIcon, Trash2, Check, Shuffle, ArrowRightToLine, ArrowLeftToLine, Undo2, Repeat, Zap, Copy, Pen } from 'lucide-react';
+import { Image as ImageIcon, Trash2, Check, Shuffle, ArrowRightToLine, ArrowLeftToLine, Undo2, Repeat, Zap, Copy, Pen, CheckSquare, Square } from 'lucide-react';
 import type { ExtractedFrame } from '../types';
 import { useState, type KeyboardEvent } from 'react';
 import Slider from 'rc-slider';
@@ -25,8 +25,8 @@ interface FrameGalleryProps {
   onSelectOnly?: (id: string) => void;
 }
 
-const CTRL =
-  'min-h-[36px] px-3 rounded-control text-xs font-medium text-muted hover:text-foreground hover:bg-white/5 transition-colors';
+const ICON_CTRL =
+  'w-8 h-8 flex items-center justify-center rounded-control text-muted hover:text-foreground hover:bg-white/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
 
 /** Compact-slider variant: same theme as SLIDER_STYLES with a smaller handle
  *  for the tight similarity-threshold control. */
@@ -88,53 +88,21 @@ export function FrameGallery({
 
   return (
     <div className="glass-panel rounded-card p-5 flex-1 flex flex-col relative overflow-hidden">
-      <div className="flex flex-wrap justify-between items-center gap-3 mb-5">
-        <h2 className="text-lg font-semibold flex items-center gap-2">
-          <ImageIcon className="w-5 h-5 text-primary" aria-hidden="true" /> Sticker frames
-          {frames.length > 0 && (
-            <span className="ml-1 font-mono text-xs text-muted tabular-nums">
-              {selectedCount}
-              <span className="text-muted/60"> / </span>
-              {frames.length}
-            </span>
-          )}
-        </h2>
-        {frames.length > 0 && (
-          <div className="flex flex-wrap gap-2 items-center w-full">
-            <button type="button" onClick={() => onSelectAll()} className={CTRL}>Select all</button>
-            {onSelectNone && (
-              <button type="button" onClick={() => onSelectNone()} className={CTRL}>Select none</button>
+      <div className="flex flex-wrap justify-between items-center gap-y-3 gap-x-2 mb-4">
+        <div className="flex flex-wrap items-center justify-between w-full xl:w-auto xl:flex-1 gap-2">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <ImageIcon className="w-5 h-5 text-primary" aria-hidden="true" /> Sticker frames
+            {frames.length > 0 && (
+              <span className="ml-1 font-mono text-xs text-muted tabular-nums">
+                {selectedCount}
+                <span className="text-muted/60"> / </span>
+                {frames.length}
+              </span>
             )}
-            <button type="button" onClick={() => onInvertSelection?.()} className={CTRL}>
-              <Shuffle className="w-3.5 h-3.5 inline mr-1" /> Invert
-            </button>
-            <button type="button" onClick={() => onReverseFrames?.()} className={CTRL}>
-              <Undo2 className="w-3.5 h-3.5 inline mr-1" /> Reverse
-            </button>
-            
-            <div className="flex items-center">
-              <button 
-                type="button" 
-                onClick={() => lastClickedId && onRemovePreceding?.(lastClickedId)} 
-                className={CTRL}
-                disabled={!lastClickedId}
-                title="Remove frames before the last clicked frame"
-              >
-                <ArrowLeftToLine className="w-3.5 h-3.5 inline mr-1" /> Clip start
-              </button>
-              
-              <button 
-                type="button" 
-                onClick={() => lastClickedId && onRemoveSubsequent?.(lastClickedId)} 
-                className={CTRL}
-                disabled={!lastClickedId}
-                title="Remove frames after the last clicked frame"
-              >
-                <ArrowRightToLine className="w-3.5 h-3.5 inline mr-1" /> Clip end
-              </button>
-            </div>
+          </h2>
 
-            <div className="flex items-center gap-2 px-3 py-1 bg-surface-hover rounded-control border border-hairline sm:ml-2">
+          {frames.length > 0 && (
+            <div className="flex items-center gap-2 px-3 py-1 bg-surface-hover rounded-control border border-hairline xl:ml-auto">
               <span className="text-[11px] text-muted whitespace-nowrap">Similarity:</span>
               <div className="w-16 sm:w-24">
                 <Slider min={1} max={100} value={threshold} onChange={(v) => setThreshold(v as number)}
@@ -170,24 +138,59 @@ export function FrameGallery({
                 </button>
               </div>
             </div>
+          )}
+        </div>
 
-            <div className="flex gap-1 ml-auto shrink-0 border-l border-hairline pl-2">
+        {frames.length > 0 && (
+          <div className="flex flex-wrap gap-1 items-center w-full">
+            <button type="button" onClick={() => onSelectAll()} className={ICON_CTRL} title="Select all">
+              <CheckSquare className="w-4 h-4" />
+            </button>
+            {onSelectNone && (
+              <button type="button" onClick={() => onSelectNone()} className={ICON_CTRL} title="Select none">
+                <Square className="w-4 h-4" />
+              </button>
+            )}
+            <button type="button" onClick={() => onInvertSelection?.()} className={ICON_CTRL} title="Invert selection">
+              <Shuffle className="w-4 h-4" />
+            </button>
+            <button type="button" onClick={() => onReverseFrames?.()} className={ICON_CTRL} title="Reverse frames">
+              <Undo2 className="w-4 h-4" />
+            </button>
+            
+            <div className="flex items-center gap-1 border-l border-hairline pl-1.5 ml-0.5">
+              <button 
+                type="button" 
+                onClick={() => lastClickedId && onRemovePreceding?.(lastClickedId)} 
+                className={ICON_CTRL}
+                disabled={!lastClickedId}
+                title="Remove frames before the last clicked frame"
+              >
+                <ArrowLeftToLine className="w-4 h-4" />
+              </button>
+              
+              <button 
+                type="button" 
+                onClick={() => lastClickedId && onRemoveSubsequent?.(lastClickedId)} 
+                className={ICON_CTRL}
+                disabled={!lastClickedId}
+                title="Remove frames after the last clicked frame"
+              >
+                <ArrowRightToLine className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-1 sm:ml-1 border-l border-hairline pl-1.5">
               {onDuplicateSelected && (
-                <button type="button" onClick={onDuplicateSelected} className={`${CTRL} hover:bg-white/10`} title="Duplicate selected frames">
-                  <span className="inline-flex items-center gap-1">
-                    <Copy className="w-3.5 h-3.5" aria-hidden="true" /> Duplicate
-                  </span>
+                <button type="button" onClick={onDuplicateSelected} className={`${ICON_CTRL} hover:bg-white/10`} title="Duplicate selected frames">
+                  <Copy className="w-4 h-4" aria-hidden="true" />
                 </button>
               )}
-              <button type="button" onClick={onDeleteSelected} className={`${CTRL} text-destructive hover:bg-destructive/10`}>
-                <span className="inline-flex items-center gap-1">
-                  <Trash2 className="w-3.5 h-3.5" aria-hidden="true" /> Selected
-                </span>
+              <button type="button" onClick={onDeleteSelected} className={`${ICON_CTRL} text-destructive hover:bg-destructive/10`} title="Delete selected frames">
+                <Trash2 className="w-4 h-4" aria-hidden="true" />
               </button>
-              <button type="button" onClick={onDeleteUnselected} className={`${CTRL} text-destructive hover:bg-destructive/10`}>
-                <span className="inline-flex items-center gap-1">
-                  <Trash2 className="w-3.5 h-3.5" aria-hidden="true" /> Unselected
-                </span>
+              <button type="button" onClick={onDeleteUnselected} className={`${ICON_CTRL} text-destructive hover:bg-destructive/10`} title="Delete unselected frames">
+                <Trash2 className="w-4 h-4 opacity-60" aria-hidden="true" />
               </button>
             </div>
           </div>

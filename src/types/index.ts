@@ -24,7 +24,6 @@ export interface WechatReadiness {
   isWechatSize: boolean;
   hasFrames: boolean;
   estimatedSizeBytes?: number;
-  actualSizeBytes?: number;
   messages: string[];
 }
 

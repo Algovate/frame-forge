@@ -10,15 +10,6 @@ import {
 import type { ProcessingPhase, StickerSourceKind } from '../types';
 import { HEADING, SLIDER_STYLES } from './ui';
 
-/** Display noun for each source kind, shown in the "Source type" row. Videos are
- *  shown as an estimated-frame count instead (see the rendering branch below). */
-const SOURCE_TYPE_LABELS: Record<StickerSourceKind, string> = {
-  gif: 'GIF',
-  video: 'Video',
-  'static-image': 'Image',
-  'static-images-batch': 'Batch Images',
-};
-
 interface ImportScreenProps {
   sourceFiles: File[];
   isProcessing: boolean;
@@ -40,21 +31,22 @@ export function ImportScreen(props: ImportScreenProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [videoDuration, setVideoDuration] = useState<number>(0);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const { sourceFiles, setStartTime, setEndTime } = props;
 
   useEffect(() => {
     // Reset range + duration for every (new) source — including none.
-    props.setStartTime(0);
-    props.setEndTime(-1);
+    setStartTime(0);
+    setEndTime(-1);
     setVideoDuration(0);
-    if (props.sourceFiles.length === 0) {
+    if (sourceFiles.length === 0) {
       setPreviewUrl(null);
       return;
     }
     // We only preview the first file in the sidebar
-    const url = URL.createObjectURL(props.sourceFiles[0]);
+    const url = URL.createObjectURL(sourceFiles[0]);
     setPreviewUrl(url);
     return () => URL.revokeObjectURL(url);
-  }, [props.sourceFiles]);
+  }, [sourceFiles, setStartTime, setEndTime]);
 
   // Drag-counter pattern: entering a child fires dragleave on the parent and
   // would flicker the highlight without the counter.
@@ -126,6 +118,19 @@ export function ImportScreen(props: ImportScreenProps) {
     'static-images-batch': `Load ${props.sourceFiles.length} images`,
   };
   const processLabel = props.sourceKind ? PROCESS_LABELS[props.sourceKind] : 'Extract sticker frames';
+  // The primary process button is identical whether it sits inside the
+  // extraction-settings panel (video) or standalone (other source kinds).
+  const processButton = (
+    <button
+      type="button"
+      onClick={props.onProcessSource}
+      disabled={!canProcessSource}
+      className="w-full min-h-[44px] bg-primary hover:bg-primary-hover text-white rounded-control font-semibold flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-[0_0_20px_var(--accent-glow)]"
+    >
+      {extracting ? <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" /> : null}
+      {extracting ? 'Extracting...' : processLabel}
+    </button>
+  );
   // Shared by both the hover overlay and the fallback (non-preview) states below.
   const sourceLabel = props.sourceFiles.length > 1
     ? `${props.sourceFiles.length} images selected`
@@ -217,7 +222,7 @@ export function ImportScreen(props: ImportScreenProps) {
       </div>
 
       {/* Extraction settings */}
-      {props.sourceFiles.length > 0 && (
+      {props.sourceFiles.length > 0 && isVideoSource && (
         <div className="glass-panel rounded-card p-5">
           <h2 className={HEADING}>
             <Settings className="w-5 h-5 text-primary" aria-hidden="true" /> Extraction settings
@@ -265,24 +270,16 @@ export function ImportScreen(props: ImportScreenProps) {
             )}
 
             <div className="bg-surface-hover border border-hairline rounded-control p-3 flex justify-between items-center">
-              <span className="text-sm text-muted">{isVideoSource ? 'Estimated frames' : 'Source type'}</span>
-              <span className="text-base font-semibold text-foreground">
-                {isVideoSource ? estimatedFrames : (props.sourceKind ? SOURCE_TYPE_LABELS[props.sourceKind] : '-')}
-              </span>
+              <span className="text-sm text-muted">Estimated frames</span>
+              <span className="text-base font-semibold text-foreground">{estimatedFrames}</span>
             </div>
 
-            <button
-              type="button"
-              onClick={props.onProcessSource}
-              disabled={!canProcessSource}
-              className="w-full min-h-[44px] bg-primary hover:bg-primary-hover text-white rounded-control font-semibold flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-[0_0_20px_var(--accent-glow)]"
-            >
-              {extracting ? <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" /> : null}
-              {extracting ? 'Extracting...' : processLabel}
-            </button>
+            {processButton}
           </div>
         </div>
       )}
+
+      {props.sourceFiles.length > 0 && !isVideoSource && processButton}
       </div>
     </div>
   );

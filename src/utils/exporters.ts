@@ -22,6 +22,13 @@ const downloadBlob = (blob: Blob, filename: string) => {
 
 const getSelected = (frames: ExtractedFrame[]) => frames.filter((f) => f.selected);
 
+/** gif.js renders with a single transparent "key" color (pure green). It's used
+ *  by both the gif.js options and the per-pixel alpha-threshold pass below, so
+ *  the key color lives in one place — change it here and both stay in sync. */
+const GIF_KEY = { r: 0, g: 255, b: 0 };
+const GIF_KEY_INT = (GIF_KEY.r << 16) | (GIF_KEY.g << 8) | GIF_KEY.b;
+const GIF_KEY_HEX = `#${GIF_KEY.r.toString(16).padStart(2, '0')}${GIF_KEY.g.toString(16).padStart(2, '0')}${GIF_KEY.b.toString(16).padStart(2, '0')}`;
+
 export const exportZIP = async (frames: ExtractedFrame[], w: number, h: number) => {
   const selectedFrames = getSelected(frames);
   if (selectedFrames.length === 0) return;
@@ -53,9 +60,9 @@ export const exportGIF = async (
   const opts: { workers: number; quality: number; workerScript: string; width?: number; height?: number; transparent?: any; background?: string } = {
     workers: 2,
     quality: 10,
-    workerScript: '/gif.worker.js',
-    transparent: 0x00FF00,
-    background: '#00FF00',
+    workerScript: import.meta.env.BASE_URL + 'gif.worker.js',
+    transparent: GIF_KEY_INT,
+    background: GIF_KEY_HEX,
   };
   if (sized) {
     opts.width = w;
@@ -95,16 +102,15 @@ export const exportGIF = async (
     const data = imageData.data;
     for (let j = 0; j < data.length; j += 4) {
       if (data[j + 3] < 128) {
-        data[j] = 0;       // R
-        data[j + 1] = 255; // G
-        data[j + 2] = 0;   // B
-        data[j + 3] = 255; // A
-      } else {
-        data[j + 3] = 255;
+        data[j] = GIF_KEY.r;
+        data[j + 1] = GIF_KEY.g;
+        data[j + 2] = GIF_KEY.b;
       }
+      data[j + 3] = 255;
     }
-    ctx.putImageData(imageData, 0, 0);
-    gif.addFrame(canvas, { delay });
+    // Pass ImageData directly instead of putting it back on the canvas.
+    // This avoids a bug where gif.js keeps a shallow reference to the reused canvas.
+    gif.addFrame(imageData, { delay });
   }
 
   return new Promise<ExportResult>((resolve, reject) => {

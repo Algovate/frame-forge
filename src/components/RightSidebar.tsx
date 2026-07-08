@@ -5,11 +5,15 @@ import {
   Archive,
   LayoutGrid,
   Image as ImageIcon,
+  SlidersHorizontal,
   type LucideIcon,
 } from 'lucide-react';
+import Slider from 'rc-slider';
+import 'rc-slider/assets/index.css';
 import type { ExtractedFrame, MattingMode, WechatReadiness } from '../types';
 import { AnimationPreview } from './AnimationPreview';
-import { HEADING, FIELD } from './ui';
+import { HEADING, FIELD, SLIDER_STYLES } from './ui';
+import { clampMin } from '../utils/numbers';
 
 interface RightSidebarProps {
   frames: ExtractedFrame[];
@@ -34,51 +38,87 @@ interface RightSidebarProps {
   onExportSpriteSheet: () => void;
 }
 
-const formatBytes = (bytes?: number) => {
-  if (!bytes) return '-';
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-};
+/** Matting-mode buttons; static, so defined once at module scope. */
+const MATTING_MODES: { id: MattingMode; label: string }[] = [
+  { id: 'edge-key', label: 'Edge' },
+  { id: 'conservative', label: 'Conserv' },
+  { id: 'balanced', label: 'Balance' },
+];
 
 export function RightSidebar(props: RightSidebarProps) {
   if (props.frames.length === 0) return null;
 
   const isStatic = props.frames.length <= 1;
+  const hasSelectedFrames = props.readiness.selectedCount > 0;
+  const previewFrame = props.frames.find((frame) => frame.selected) ?? props.frames[0];
+  const disableFrameActions = props.isProcessing || !hasSelectedFrames;
 
   return (
     <aside className="lg:col-span-3 space-y-4 h-full overflow-y-auto custom-scrollbar pl-2 pb-6">
 
-      {/* Animation Preview (Only for dynamic sources) */}
-      {!isStatic && (
-        <div className="glass-panel rounded-card p-4 flex flex-col">
-          <h2 className={HEADING}>
-            <Film className="w-5 h-5 text-primary" aria-hidden="true" /> Preview
-          </h2>
-          <div className="relative aspect-[4/3] sm:aspect-video w-full min-h-[200px]">
+      {/* Preview */}
+      <div className="glass-panel rounded-card p-3 flex flex-col">
+        <h2 className={HEADING}>
+          {isStatic ? (
+            <ImageIcon className="w-5 h-5 text-primary" aria-hidden="true" />
+          ) : (
+            <Film className="w-5 h-5 text-primary" aria-hidden="true" />
+          )}
+          <span>Preview</span>
+          <span className="ml-auto text-[11px] font-normal text-muted font-mono bg-background/50 px-2 py-1 rounded-md border border-hairline">
+            {props.readiness.selectedCount} / {props.frames.length}
+          </span>
+        </h2>
+        {isStatic ? (
+          <div className="frame-checker relative aspect-[4/3] w-full rounded-control border border-hairline overflow-hidden flex items-center justify-center p-3">
+            <img
+              src={previewFrame.dataUrl}
+              alt="Selected frame preview"
+              className="max-w-full max-h-full object-contain drop-shadow-2xl"
+            />
+          </div>
+        ) : (
+          <div className="relative aspect-[4/3] sm:aspect-video w-full">
             <AnimationPreview frames={props.frames} delayMs={props.gifDelay} />
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Image cleanup */}
-      <div className="glass-panel rounded-card p-4">
+
+        {!isStatic && (
+          <fieldset className="mt-2">
+            <div className="flex justify-between items-center mb-1">
+              <legend className="text-[11px] text-muted">Frame delay</legend>
+              <span className="text-[11px] font-mono text-muted">{props.gifDelay} ms</span>
+            </div>
+            <div className="px-1 pt-1 pb-1">
+              <Slider
+                min={20}
+                max={500}
+                step={10}
+                value={props.gifDelay}
+                onChange={(value) => props.setGifDelay(clampMin(value as number, 20, 100))}
+                styles={SLIDER_STYLES}
+              />
+            </div>
+          </fieldset>
+        )}
+      </div>
+
+      {/* Prepare */}
+      <div className="glass-panel rounded-card p-3">
         <h2 className={HEADING}>
-          <Wand2 className="w-5 h-5 text-dedupe" aria-hidden="true" /> Image cleanup
+          <Wand2 className="w-4 h-4 text-dedupe" aria-hidden="true" /> Prepare
         </h2>
-        <div className="space-y-3">
-          <div className="grid grid-cols-3 gap-2" role="group" aria-label="Matting mode">
-            {[
-              { id: 'edge-key' as const, label: 'Edge key' },
-              { id: 'conservative' as const, label: 'Conservative' },
-              { id: 'balanced' as const, label: 'Balanced' },
-            ].map((mode) => (
+        <div className="space-y-2">
+          <div className="grid grid-cols-3 gap-1.5" role="group" aria-label="Matting mode">
+            {MATTING_MODES.map((mode) => (
               <button
                 key={mode.id}
                 type="button"
                 onClick={() => props.setMattingMode(mode.id)}
                 aria-pressed={props.mattingMode === mode.id}
                 disabled={props.isProcessing}
-                className={`min-h-[40px] rounded-control border text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                className={`min-h-[28px] rounded-control border text-[11px] font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                   props.mattingMode === mode.id
                     ? 'border-matte text-matte bg-matte/10'
                     : 'border-hairline text-muted hover:text-foreground hover:bg-surface-hover'
@@ -91,54 +131,80 @@ export function RightSidebar(props: RightSidebarProps) {
           <button
             type="button"
             onClick={props.onRemoveBackgrounds}
-            disabled={props.isProcessing}
-            className="w-full min-h-[44px] bg-matte/10 text-matte hover:bg-matte/20 border border-matte/30 rounded-control text-sm font-medium flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            disabled={disableFrameActions}
+            className="w-full min-h-[32px] bg-matte/10 text-matte hover:bg-matte/20 border border-matte/30 rounded-control text-xs font-medium flex justify-center items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            <Wand2 className="w-4 h-4" aria-hidden="true" /> {isStatic ? 'Cleanup' : 'Batch cleanup'}
+            <Wand2 className="w-3.5 h-3.5" aria-hidden="true" /> {isStatic ? 'Cleanup' : 'Batch cleanup'}
           </button>
         </div>
       </div>
 
-      {/* Export and readiness */}
-      <div className="glass-panel rounded-card p-4">
+      {/* Output */}
+      <div className="glass-panel rounded-card p-3">
         <h2 className={HEADING}>
-          <Download className="w-5 h-5 text-primary" aria-hidden="true" /> {isStatic ? 'Export' : 'WeChat export'}
+          <div className="flex items-center gap-1.5">
+            <SlidersHorizontal className="w-4 h-4 text-primary" aria-hidden="true" /> Output
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              props.setExportWidth(240);
+              props.setExportHeight(240);
+            }}
+            disabled={props.isProcessing}
+            className="ml-auto text-[10px] text-primary hover:bg-primary/10 px-1.5 py-0.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            240x240 Preset
+          </button>
         </h2>
-        <div className="space-y-3">
-          {!isStatic && (
-            <>
-              <div className="grid grid-cols-3 gap-2 text-xs">
-                <Metric label="Frames" value={props.readiness.selectedCount} />
-                <Metric label="Duration" value={`${(props.readiness.durationMs / 1000).toFixed(1)}s`} />
-                <Metric label="Last GIF" value={formatBytes(props.readiness.actualSizeBytes)} />
-              </div>
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <label htmlFor="exp-width" className="block">
+              <span className="block text-[10px] text-muted mb-0.5">Width</span>
+              <input
+                id="exp-width"
+                type="number"
+                min={0}
+                value={props.exportWidth}
+                onChange={(e) => props.setExportWidth(clampMin(e.currentTarget.valueAsNumber, 0, 0))}
+                className={FIELD}
+              />
+            </label>
+            <label htmlFor="exp-height" className="block">
+              <span className="block text-[10px] text-muted mb-0.5">Height</span>
+              <input
+                id="exp-height"
+                type="number"
+                min={0}
+                value={props.exportHeight}
+                onChange={(e) => props.setExportHeight(clampMin(e.currentTarget.valueAsNumber, 0, 0))}
+                className={FIELD}
+              />
+            </label>
+          </div>
 
-              <label htmlFor="gif-delay" className="block">
-                <span className="block text-[11px] text-muted mb-1">Frame delay (ms)</span>
-                <input
-                  id="gif-delay"
-                  type="number"
-                  min={20}
-                  value={props.gifDelay}
-                  onChange={(e) => props.setGifDelay(Number(e.target.value))}
-                  className={FIELD}
-                />
-              </label>
-            </>
+          {props.readiness.messages.length > 0 && (
+            <ul className="space-y-0.5 text-[10px] text-muted leading-tight">
+              {props.readiness.messages.map((message) => (
+                <li key={message}>{message}</li>
+              ))}
+            </ul>
           )}
+        </div>
+      </div>
 
-          <ul className="space-y-1 text-xs text-muted">
-            {props.readiness.messages.map((message) => (
-              <li key={message}>{message}</li>
-            ))}
-          </ul>
-
+      {/* Export */}
+      <div className="glass-panel rounded-card p-3">
+        <h2 className={HEADING}>
+          <Download className="w-4 h-4 text-primary" aria-hidden="true" /> Export
+        </h2>
+        <div className="space-y-2">
           {!isStatic && (
             <ExportButton
               icon={Film}
               title="Export WeChat GIF"
-              hint="Uses selected frames and current delay"
-              disabled={props.isProcessing}
+              hint="Selected frames & delay"
+              disabled={disableFrameActions}
               onClick={props.onExportGIF}
               primary
             />
@@ -147,71 +213,43 @@ export function RightSidebar(props: RightSidebarProps) {
           <ExportButton
             icon={ImageIcon}
             title="Export WeChat PNG"
-            hint={props.readiness.selectedCount > 1 ? "Exports selected frames as a ZIP" : "Exports the first selected frame"}
-            disabled={props.isProcessing}
+            hint={props.readiness.selectedCount > 1 ? "Selected frames (ZIP)" : "First selected frame"}
+            disabled={disableFrameActions}
             onClick={props.onExportPNG}
             primary={isStatic}
           />
 
-          <details className="rounded-control border border-hairline bg-surface-hover/40 p-3">
-            <summary className="cursor-pointer text-xs font-medium text-muted hover:text-foreground">
+          <details className="rounded-control border border-hairline bg-surface-hover/40 p-2">
+            <summary className="cursor-pointer text-[11px] font-medium text-muted hover:text-foreground">
               Advanced export options
             </summary>
 
-            <div className="mt-3 space-y-3">
-              <fieldset className="space-y-2 rounded-control border border-hairline p-3">
-                <legend className="px-1 text-xs font-medium text-muted">Custom size</legend>
-                <div className="grid grid-cols-2 gap-2">
-                  <label htmlFor="exp-width" className="block">
-                    <span className="block text-[11px] text-muted mb-1">Width</span>
-                    <input
-                      id="exp-width"
-                      type="number"
-                      min={0}
-                      value={props.exportWidth}
-                      onChange={(e) => props.setExportWidth(Number(e.target.value))}
-                      className={FIELD}
-                    />
-                  </label>
-                  <label htmlFor="exp-height" className="block">
-                    <span className="block text-[11px] text-muted mb-1">Height</span>
-                    <input
-                      id="exp-height"
-                      type="number"
-                      min={0}
-                      value={props.exportHeight}
-                      onChange={(e) => props.setExportHeight(Number(e.target.value))}
-                      className={FIELD}
-                    />
-                  </label>
-                </div>
-              </fieldset>
-
+            <div className="mt-2 space-y-2">
               {!isStatic && (
                 <>
-                  <fieldset className="space-y-2 rounded-control border border-hairline p-3">
-                    <legend className="px-1 text-xs font-medium text-muted">Sprite sheet</legend>
-                    <div className="grid grid-cols-2 gap-2">
+                  <fieldset className="space-y-1 rounded-control border border-hairline p-2">
+                    <legend className="px-1 text-[10px] font-medium text-muted">Sprite sheet</legend>
+                    <div className="grid grid-cols-2 gap-1.5">
                       <label htmlFor="sprite-cols" className="block">
-                        <span className="block text-[11px] text-muted mb-1">Columns</span>
+                        <span className="block text-[10px] text-muted mb-0.5">Columns</span>
                         <input
                           id="sprite-cols"
                           type="number"
                           min={0}
                           value={props.spriteCols || ''}
-                          onChange={(e) => props.setSpriteCols(Number(e.target.value))}
+                          onChange={(e) => props.setSpriteCols(clampMin(e.currentTarget.valueAsNumber, 0, 0))}
                           placeholder="auto"
                           className={FIELD}
                         />
                       </label>
                       <label htmlFor="sprite-pad" className="block">
-                        <span className="block text-[11px] text-muted mb-1">Padding</span>
+                        <span className="block text-[10px] text-muted mb-0.5">Padding</span>
                         <input
                           id="sprite-pad"
                           type="number"
                           min={0}
                           value={props.spritePadding || ''}
-                          onChange={(e) => props.setSpritePadding(Number(e.target.value))}
+                          onChange={(e) => props.setSpritePadding(clampMin(e.currentTarget.valueAsNumber, 0, 0))}
                           placeholder="0"
                           className={FIELD}
                         />
@@ -219,19 +257,19 @@ export function RightSidebar(props: RightSidebarProps) {
                     </div>
                   </fieldset>
 
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-1.5">
                     <ExportButton
                       icon={Archive}
                       title="ZIP"
                       hint="Frames"
-                      disabled={props.isProcessing}
+                      disabled={disableFrameActions}
                       onClick={props.onExportZIP}
                     />
                     <ExportButton
                       icon={LayoutGrid}
                       title="Sprite"
                       hint="Sheet"
-                      disabled={props.isProcessing}
+                      disabled={disableFrameActions}
                       onClick={props.onExportSpriteSheet}
                     />
                   </div>
@@ -245,14 +283,7 @@ export function RightSidebar(props: RightSidebarProps) {
   );
 }
 
-function Metric({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded-control border border-hairline bg-background/40 p-2">
-      <span className="block text-[11px] text-muted">{label}</span>
-      <span className="font-mono text-xs text-foreground">{value}</span>
-    </div>
-  );
-}
+
 
 function ExportButton({
   icon: Icon,
@@ -274,22 +305,22 @@ function ExportButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`group flex items-center gap-3 w-full min-h-[44px] px-3 rounded-control border disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-left ${
+      className={`group flex items-center gap-2.5 w-full min-h-[36px] px-2.5 py-1.5 rounded-control border disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-left ${
         primary
-          ? 'bg-primary hover:bg-primary-hover border-primary text-white shadow-[0_0_20px_var(--accent-glow)]'
+          ? 'bg-primary hover:bg-primary-hover border-primary text-white shadow-[0_0_12px_var(--accent-glow)]'
           : 'bg-surface-hover hover:bg-hairline border-hairline hover:border-primary/40'
       }`}
     >
       <span
-        className={`grid place-items-center w-9 h-9 rounded-lg transition-colors shrink-0 ${
+        className={`grid place-items-center w-7 h-7 rounded-md transition-colors shrink-0 ${
           primary ? 'bg-white/15 text-white' : 'bg-background text-muted group-hover:text-primary group-hover:bg-primary/10'
         }`}
       >
-        <Icon className="w-5 h-5" aria-hidden="true" />
+        <Icon className="w-4 h-4" aria-hidden="true" />
       </span>
-      <span className="flex flex-col min-w-0">
-        <span className={`text-sm font-medium leading-tight ${primary ? 'text-white' : 'text-foreground'}`}>{title}</span>
-        <span className={`text-xs leading-tight ${primary ? 'text-white/75' : 'text-muted'}`}>{hint}</span>
+      <span className="flex flex-col min-w-0 justify-center">
+        <span className={`text-[12px] font-medium leading-tight ${primary ? 'text-white' : 'text-foreground'}`}>{title}</span>
+        <span className={`text-[10px] mt-0.5 leading-tight ${primary ? 'text-white/75' : 'text-muted'}`}>{hint}</span>
       </span>
     </button>
   );

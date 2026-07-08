@@ -55,28 +55,21 @@ export function AnimationPreview({ frames, delayMs }: AnimationPreviewProps) {
           className="max-w-full max-h-full object-contain drop-shadow-2xl"
         />
 
-        {/* Playback speed indicator */}
-        <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md px-2 py-1 rounded-md text-[11px] font-mono text-white/80">
-          {safeDelay} ms
+          <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between pointer-events-none">
+            <button
+              type="button"
+              onClick={() => setIsPlaying(!isPlaying)}
+              aria-label={isPlaying ? 'Pause preview' : 'Play preview'}
+              className="pointer-events-auto w-7 h-7 rounded-full bg-black/40 hover:bg-black/70 backdrop-blur-md text-white flex items-center justify-center transition-colors shrink-0 shadow-sm"
+            >
+              {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
+            </button>
+
+            <div className="pointer-events-auto text-[10px] font-mono text-white/90 bg-black/40 backdrop-blur-md px-2 py-1 rounded-md shadow-sm">
+              {safeIndex + 1} / {selectedFrames.length}
+            </div>
+          </div>
         </div>
       </div>
-
-      <div className="p-4 bg-surface border-t border-hairline flex flex-col gap-4">
-        <div className="flex items-center justify-center gap-4">
-          <button
-            type="button"
-            onClick={() => setIsPlaying(!isPlaying)}
-            className="w-10 h-10 rounded-full bg-primary hover:bg-primary-hover text-white flex items-center justify-center transition-colors shrink-0 shadow-[0_0_12px_var(--accent-glow)]"
-          >
-            {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
-          </button>
-        </div>
-
-        <div className="text-center text-xs font-mono text-muted">
-          Frame {safeIndex + 1} / {selectedFrames.length} · {selectedFrames.length} frames ·{' '}
-          {((selectedFrames.length * safeDelay) / 1000).toFixed(1)}s
-        </div>
-      </div>
-    </div>
   );
 }

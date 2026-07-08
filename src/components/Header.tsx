@@ -6,6 +6,9 @@ interface HeaderProps {
   onAppendFiles?: (files: File[]) => void;
 }
 
+const HEADER_BUTTON_CLASS =
+  'flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted hover:text-foreground bg-surface-hover hover:bg-hairline rounded-control transition-colors border border-hairline hover:border-primary/30';
+
 export function Header({ onReset, onAppendFiles }: HeaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -29,7 +32,7 @@ export function Header({ onReset, onAppendFiles }: HeaderProps) {
           </p>
         </div>
       </div>
-      
+
       {(onReset || onAppendFiles) && (
         <div className="flex gap-2">
           {onAppendFiles && (
@@ -45,7 +48,7 @@ export function Header({ onReset, onAppendFiles }: HeaderProps) {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted hover:text-foreground bg-surface-hover hover:bg-hairline rounded-control transition-colors border border-hairline hover:border-primary/30"
+                className={HEADER_BUTTON_CLASS}
                 title="Add more frames from images or a video"
               >
                 <Plus className="w-4 h-4" />
@@ -57,7 +60,7 @@ export function Header({ onReset, onAppendFiles }: HeaderProps) {
             <button
               type="button"
               onClick={onReset}
-              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted hover:text-foreground bg-surface-hover hover:bg-hairline rounded-control transition-colors border border-hairline hover:border-primary/30"
+              className={HEADER_BUTTON_CLASS}
               title="Start over with a new file"
             >
               <RotateCcw className="w-4 h-4" />
