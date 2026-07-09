@@ -141,6 +141,13 @@ export async function getFFmpeg(): Promise<FFmpeg> {
   return ffmpegInstance;
 }
 
+/** Max cropped outputs produced per single ffmpeg pass. Each pass decodes the
+ * source once and re-encodes every cell in the chunk, so a larger chunk means
+ * fewer decodes / WASM loads (faster) but higher peak memory. 8 keeps the WASM
+ * heap well under its ceiling even on large sources while collapsing the
+ * default 4×4 grid from 16 separate ffmpeg runs down to 2. */
+const OUTPUTS_PER_PASS = 8;
+
 export async function splitVideoGridParts(
   file: File,
   rows: number,
@@ -165,9 +172,28 @@ export async function splitVideoGridParts(
   const inputName = `input${ext}`;
   const baseName = file.name.includes('.') ? file.name.substring(0, file.name.lastIndexOf('.')) : file.name;
 
+  // Clamp the seek point to >= 0; a negative start would otherwise inflate the
+  // -t duration. Applied as input options so the source is seeked once per pass.
+  const seekStart = startTime !== undefined && startTime > 0 ? startTime : 0;
+  const duration = endTime !== undefined && endTime > seekStart ? endTime - seekStart : undefined;
+
+  // Slice the grid into fixed-size chunks. Each chunk is handled by ONE ffmpeg
+  // pass: a single decode of the source → split into N streams → crop each →
+  // N re-encodes. This replaces the old approach of one full decode + re-encode
+  // (and one fresh WASM load + full file read) PER cell.
+  const chunks: typeof geometry.parts[] = [];
+  for (let i = 0; i < geometry.parts.length; i += OUTPUTS_PER_PASS) {
+    chunks.push(geometry.parts.slice(i, i + OUTPUTS_PER_PASS));
+  }
+
   const parts: SplitVideoPart[] = [];
   const total = geometry.parts.length;
   let current = 0;
+
+  // Read the source from disk once; each pass copies these bytes into its own
+  // WASM instance (see writeFile below). The old code re-ran fetchFile
+  // (disk → JS) once per cell.
+  const fileData = await fetchFile(file);
 
   let coreBlobURL = '';
   let wasmBlobURL = '';
@@ -178,12 +204,10 @@ export async function splitVideoGridParts(
     wasmBlobURL = await toBlobURL(wasmURL, 'application/wasm');
     workerBlobURL = await toBlobURL(workerURL, 'text/javascript');
 
-    for (const part of geometry.parts) {
-      current++;
-      if (onProgress) onProgress(current, total);
-      
-      // Create a fresh FFmpeg instance for EACH part to prevent WASM memory leaks
-      // (Emscripten OOM / Aborted() errors) when processing high-res grids.
+    for (const chunk of chunks) {
+      // A fresh instance per chunk avoids the Emscripten memory leak that
+      // accumulates across sequential execs on high-res grids — the same reason
+      // the old per-cell code terminated after every cell.
       const ffmpeg = new FFmpeg();
       try {
         await ffmpeg.load({
@@ -192,60 +216,83 @@ export async function splitVideoGridParts(
           workerURL: workerBlobURL,
         });
 
-        const fileData = await fetchFile(file);
-        await ffmpeg.writeFile(inputName, fileData);
+        // writeFile transfers (detaches) the buffer to the WASM worker, so each
+        // pass gets its own copy. Reading from disk once and copying in memory
+        // is far cheaper than re-running fetchFile per chunk — and reusing one
+        // buffer would throw DataCloneError after the first transfer detaches it.
+        await ffmpeg.writeFile(inputName, new Uint8Array(fileData));
 
-        const outputName = getSplitPartFilename(baseName, part.row, part.col);
+        // filter_complex: split the single input into N streams and crop each to
+        // its grid cell, all in one graph → one decode, N outputs.
+        const n = chunk.length;
+        const splitLabels = Array.from({ length: n }, (_, i) => `s${i}`);
+        const cropLabels = Array.from({ length: n }, (_, i) => `v${i}`);
+        const filterComplex = [
+          `[0:v]split=${n}[${splitLabels.join('][')}]`,
+          ...chunk.map(
+            (part, i) =>
+              `[${splitLabels[i]}]crop=${part.width}:${part.height}:${part.x}:${part.y}[${cropLabels[i]}]`,
+          ),
+        ].join(';');
 
         const args: string[] = [];
-
-        // Clamp the seek point to >= 0; a negative start would otherwise inflate
-        // the -t duration (the seek term feeds the duration math below).
-        const seekStart = startTime !== undefined && startTime > 0 ? startTime : 0;
         if (seekStart > 0) {
           args.push('-ss', seekStart.toString());
         }
-        if (endTime !== undefined && endTime > seekStart) {
-          args.push('-t', (endTime - seekStart).toString());
+        if (duration !== undefined) {
+          args.push('-t', duration.toString());
         }
-
         args.push('-i', inputName);
+        args.push('-filter_complex', filterComplex);
 
-        args.push(
-          '-vf', `crop=${part.width}:${part.height}:${part.x}:${part.y}`,
-          '-c:v', 'libx264',
-          '-preset', 'ultrafast'
-        );
-
-        if (removeAudio) {
-          args.push('-an');
-        } else {
-          // Transcode to AAC: stream-copying non-MP4 audio (e.g. Opus from webm)
-          // into the .mp4 container is invalid and makes ffmpeg fail.
-          args.push('-c:a', 'aac');
+        // Per-output maps + codec settings. Options preceding each filename
+        // apply to that output only, so they are repeated for every cell.
+        for (let i = 0; i < n; i++) {
+          args.push('-map', `[${cropLabels[i]}]`);
+          if (!removeAudio) {
+            // Optional map: silently skips sources that have no audio track.
+            args.push('-map', '0:a?');
+          }
+          args.push('-c:v', 'libx264', '-preset', 'ultrafast');
+          if (removeAudio) {
+            args.push('-an');
+          } else {
+            // Transcode to AAC: stream-copying non-MP4 audio (e.g. Opus from
+            // webm) into the .mp4 container is invalid and makes ffmpeg fail.
+            args.push('-c:a', 'aac');
+          }
+          args.push(getSplitPartFilename(baseName, chunk[i].row, chunk[i].col));
         }
-        args.push(outputName);
 
-        // Use FFmpeg crop filter, re-encode video with ultrafast preset
+        // One decode + N crops + N re-encodes in a single exec.
         await ffmpeg.exec(args);
 
-        const data = await ffmpeg.readFile(outputName);
-        const blob = fileDataToBlob(data, 'video/mp4');
-        parts.push({
-          row: part.row,
-          col: part.col,
-          filename: outputName,
-          blob,
-          file: new File([blob], outputName, { type: 'video/mp4' }),
-          width: part.width,
-          height: part.height,
-        });
+        // Read each chunk output back. Progress is reported per completed part
+        // so the UI advances smoothly within a pass.
+        for (let i = 0; i < n; i++) {
+          const part = chunk[i];
+          const outputName = getSplitPartFilename(baseName, part.row, part.col);
+          const data = await ffmpeg.readFile(outputName);
+          const blob = fileDataToBlob(data, 'video/mp4');
+          parts.push({
+            row: part.row,
+            col: part.col,
+            filename: outputName,
+            blob,
+            file: new File([blob], outputName, { type: 'video/mp4' }),
+            width: part.width,
+            height: part.height,
+          });
 
-        // Free memory for this part
-        await ffmpeg.deleteFile(outputName);
+          // Free MEMFS for this output before reading the next.
+          await ffmpeg.deleteFile(outputName);
+
+          current++;
+          if (onProgress) onProgress(current, total);
+        }
       } finally {
         // Fully terminate this instance to free WASM memory before the next
-        // iteration, even if load/exec threw mid-cell.
+        // chunk, even if load/exec threw mid-pass.
         ffmpeg.terminate();
       }
     }
