@@ -17,6 +17,7 @@
     "error_extract": "Could not extract frames from that file",
     "success_appended": "Appended {{count}} frame{{s}}",
     "success_extracted": "Extracted {{count}} frame{{s}}",
+    "no_frames_extracted": "No frames extracted — check the trim window or source file",
     "finding_duplicates": "Finding duplicate frames...",
     "success_dedupe": "Unselected {{count}} duplicate frame{{s}}",
     "no_duplicates": "No duplicate frames found",
