@@ -44,6 +44,7 @@
     "success_sprite": "Sprite sheet ready",
     "error_sprite": "Sprite sheet export failed",
     "success_duplicate": "Duplicated {{count}} frame{{s}}",
+    "success_clips_loaded": "Loaded {{count}} sticker clip{{s}}",
     "frame_saved": "Frame saved",
     "applying_crop": "Applying crop to selected frames...",
     "success_crop": "Cropped {{count}} selected frame{{s}}",
@@ -60,7 +61,9 @@
     "cleanup": "Cleanup",
     "batch_cleanup": "Batch cleanup",
     "output": "Output",
-    "preset_240": "240x240 Preset",
+    "presets": "Presets",
+    "preset_wechat": "WeChat (240x240, 10fps)",
+    "preset_discord": "Discord (128x128, 20fps)",
     "width": "Width",
     "height": "Height",
     "export": "Export",
@@ -126,6 +129,24 @@
     "frame_selected": "Frame {{number}}, selected",
     "frame_not_selected": "Frame {{number}}, not selected",
     "edit_frame": "Edit Frame"
+  },
+  "clips": {
+    "title": "Sticker queue",
+    "status_queued": "Queued",
+    "status_extracting": "Extracting",
+    "status_ready": "Ready",
+    "status_edited": "Edited",
+    "status_error": "Error"
+  },
+  "assets": {
+    "library": "Assets library",
+    "use_asset": "Use asset",
+    "use_all": "Use all assets",
+    "empty_title": "No assets yet",
+    "empty_desc": "Split a video to add reusable sticker clips here.",
+    "clear_all": "Clear All",
+    "delete": "Delete",
+    "download": "Download"
   },
   "editor": {
     "discard": "Discard unsaved edits?",
@@ -195,7 +216,7 @@
     "processing": "Processing video...",
     "error_load": "Failed to load video",
     "error_process": "Failed to split video",
-    "success_split": "Video split and exported as ZIP",
+    "success_split": "Video split results are ready",
     "rows": "Rows",
     "cols": "Cols",
     "gap": "Gap (px)",
@@ -205,6 +226,18 @@
     "output_resolution": "Output cell resolution",
     "error_too_large": "File too large (Max 500MB)",
     "split_export": "Split & Export ZIP",
+    "split_video": "Split video",
+    "generating_zip": "Generating ZIP...",
+    "download_zip": "Download ZIP",
+    "edit_all": "Edit all in Frame Editor",
+    "edit_cell": "Edit",
+    "results": "Split results",
+    "trim": "Trim (Optional)",
+    "start_time": "Start Time (s)",
+    "end_time": "End Time (s)",
+    "link_padding": "Link padding",
+    "error_trim_invalid": "Start and end time must be valid non-negative numbers.",
+    "error_end_before_start": "End time must be greater than start time.",
     "processing_step": "Processing part {{part}} of {{total}}..."
   }
 }

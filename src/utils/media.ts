@@ -39,6 +39,18 @@ export const loadImage = (src: string): Promise<HTMLImageElement> =>
     img.src = src;
   });
 
+/** Rasterize a canvas to a fresh `blob:` URL. Resolves to `fallback` (empty
+ *  string by default) when encoding fails, so callers never get a dangling URL.
+ *  Shared by the GIF/image extractors and resizeImage. */
+export const canvasToBlobUrl = (
+  canvas: HTMLCanvasElement,
+  type = 'image/png',
+  fallback = '',
+): Promise<string> =>
+  new Promise((resolve) => {
+    canvas.toBlob((blob) => resolve(blob ? URL.createObjectURL(blob) : fallback), type);
+  });
+
 /** Resize a frame's data URL to w×h. Returns the original data URL unchanged
  *  when either dimension is missing (the "auto" case). */
 export const resizeImage = async (dataUrl: string, w: number, h: number): Promise<string> => {
@@ -49,14 +61,25 @@ export const resizeImage = async (dataUrl: string, w: number, h: number): Promis
   cvs.height = h;
   const c = cvs.getContext('2d');
   c?.drawImage(img, 0, 0, w, h);
-  return cvs.toDataURL('image/png');
+  return canvasToBlobUrl(cvs, 'image/png', dataUrl);
 };
 
 /** Revoke any `blob:` object URLs in a frame list. Call before frames are
  *  cleared or dropped so matting output doesn't leak decoded image data.
- *  No-ops on `data:` URLs. */
-export const revokeFrameUrls = (frames: { dataUrl: string }[]) => {
+ *  Revokes both `dataUrl` and `sourceDataUrl`; no-ops on `data:` URLs. */
+export const revokeFrameUrls = (frames: { dataUrl: string; sourceDataUrl?: string }[]) => {
   for (const f of frames) {
     if (f.dataUrl.startsWith('blob:')) URL.revokeObjectURL(f.dataUrl);
+    if (f.sourceDataUrl?.startsWith('blob:')) URL.revokeObjectURL(f.sourceDataUrl);
   }
+};
+
+/** Return an independent URL for a frame image so the copy can be revoked
+ *  without affecting the original. `blob:` URLs alias the same handle when
+ *  shallow-copied (e.g. duplicating a frame), so re-create the handle from the
+ *  underlying bytes; `data:` URLs are immutable and can be shared as-is. */
+export const cloneFrameUrl = async (url: string): Promise<string> => {
+  if (!url.startsWith('blob:')) return url;
+  const blob = await (await fetch(url)).blob();
+  return URL.createObjectURL(blob);
 };

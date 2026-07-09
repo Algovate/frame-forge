@@ -1,22 +1,16 @@
 import { Layers, RotateCcw, Plus, Languages, Film, Grid3X3 } from 'lucide-react';
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-
-export type ToolType = 'frame' | 'split';
-
-interface HeaderProps {
-  onReset?: () => void;
-  onAppendFiles?: (files: File[]) => void;
-  activeTool: ToolType;
-  onToolChange: (tool: ToolType) => void;
-}
+import { useAppStore, type ToolType } from '../store';
 
 const HEADER_BUTTON_CLASS =
   'flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted hover:text-foreground bg-surface-hover hover:bg-hairline rounded-control transition-colors border border-hairline hover:border-primary/30';
 
-export function Header({ onReset, onAppendFiles, activeTool, onToolChange }: HeaderProps) {
+export function Header() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { t, i18n } = useTranslation();
+  const { activeTool, setActiveTool, resetWorkspace, appendFilesHandler, frames, isProcessing } = useAppStore();
+  const hasFrames = frames.length > 0;
 
   const tools = [
     { id: 'frame' as const, Icon: Film, label: t('tools.frame_editor', 'Frame Editor') },
@@ -30,7 +24,7 @@ export function Header({ onReset, onAppendFiles, activeTool, onToolChange }: Hea
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      onAppendFiles?.(Array.from(e.target.files));
+      appendFilesHandler?.(Array.from(e.target.files));
       e.target.value = '';
     }
   };
@@ -51,14 +45,14 @@ export function Header({ onReset, onAppendFiles, activeTool, onToolChange }: Hea
         </div>
 
         {/* Tool Switcher — desktop (icons + labels) */}
-        <ToolSwitcher tools={tools} activeTool={activeTool} onToolChange={onToolChange} showLabels className="hidden sm:flex" />
+        <ToolSwitcher tools={tools} activeTool={activeTool} onToolChange={setActiveTool} showLabels className="hidden sm:flex" />
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
         {/* Tool Switcher — mobile (icons only) */}
-        <ToolSwitcher tools={tools} activeTool={activeTool} onToolChange={onToolChange} showLabels={false} className="flex sm:hidden mr-auto" />
+        <ToolSwitcher tools={tools} activeTool={activeTool} onToolChange={setActiveTool} showLabels={false} className="flex sm:hidden mr-auto" />
 
-        {activeTool === 'frame' && onAppendFiles && (
+        {activeTool === 'frame' && appendFilesHandler && hasFrames && !isProcessing && (
           <>
             <input
               type="file"
@@ -80,10 +74,10 @@ export function Header({ onReset, onAppendFiles, activeTool, onToolChange }: Hea
           </>
         )}
 
-        {activeTool === 'frame' && onReset && (
+        {activeTool === 'frame' && hasFrames && !isProcessing && (
           <button
             type="button"
-            onClick={onReset}
+            onClick={resetWorkspace}
             className={HEADER_BUTTON_CLASS}
             title={t('header.new_source', 'New Source')}
           >

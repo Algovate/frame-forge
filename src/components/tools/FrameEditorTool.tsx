@@ -1,33 +1,33 @@
-import { useCallback, useState, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, type SetStateAction } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ImportScreen } from '../ImportScreen';
 import { RightSidebar } from '../RightSidebar';
 import { FrameGallery } from '../FrameGallery';
 import { FrameEditorModal } from '../FrameEditorModal';
 import type { ToastType } from '../Toast';
-import type { ExtractedFrame, MattingMode, ProcessingPhase } from '../../types';
+import type { AssetLibraryItem, ExtractedFrame, MattingMode, ProcessingPhase } from '../../types';
 import { extractFromGIF, extractFromVideo, extractFromImages } from '../../utils/extractors';
 import { findDuplicateFrames, findLoopFrames, findJumpFrames, batchRemoveBackground, cropFrames } from '../../utils/processors';
 import type { PixelRect } from '../../utils/canvasEditor';
 import { exportZIP, exportGIF, exportPNG, exportSpriteSheet } from '../../utils/exporters';
-import { classifyStickerSource, classifySourceKind, revokeFrameUrls, randomId } from '../../utils/media';
+import { classifyStickerSource, classifySourceKind, revokeFrameUrls, cloneFrameUrl, randomId } from '../../utils/media';
 import { WECHAT_STICKER_PRESET, getWechatReadiness } from '../../utils/wechat';
 import { ProcessingOverlay } from '../ProcessingOverlay';
+import { useAppStore } from '../../store';
 
 interface FrameEditorToolProps {
   onPushToast: (type: ToastType, message: string) => void;
-  onHasFramesChange?: (has: boolean) => void;
-  resetTrigger?: number;
-  appendTrigger?: { files: File[]; id: number };
+  onAssetStatusChange?: (id: string, status: AssetLibraryItem['status'], errorMessage?: string) => void;
 }
 
-export function FrameEditorTool({ onPushToast, onHasFramesChange, resetTrigger, appendTrigger }: FrameEditorToolProps) {
+export function FrameEditorTool({
+  onPushToast,
+  onAssetStatusChange,
+}: FrameEditorToolProps) {
   const { t } = useTranslation();
-  const [sourceFiles, setSourceFiles] = useState<File[]>([]);
-  const [frames, setFrames] = useState<ExtractedFrame[]>([]);
+  const { frames, setFrames, sourceFiles, setSourceFiles, activeAssetId, setActiveAssetId, setAppendFilesHandler, setLoadIncomingClipHandler, isProcessing, setIsProcessing } = useAppStore();
   const framesRef = useRef(frames);
   framesRef.current = frames;
-  const [isProcessing, setIsProcessing] = useState(false);
   const [phase, setPhase] = useState<ProcessingPhase>('idle');
   const [processMsg, setProcessMsg] = useState('');
   const [editingFrameId, setEditingFrameId] = useState<string | null>(null);
@@ -45,21 +45,35 @@ export function FrameEditorTool({ onPushToast, onHasFramesChange, resetTrigger, 
   const [spriteCols, setSpriteCols] = useState<number>(0);
   const [spritePadding, setSpritePadding] = useState<number>(0);
 
-  // Handle external triggers from Header
-  useEffect(() => {
-    if (resetTrigger) {
-      revokeFrameUrls(framesRef.current);
-      setFrames([]);
-      setSourceFiles([]);
-      setEditingFrameId(null);
-    }
-  }, [resetTrigger]);
+  const setEditorFrames = useCallback((action: SetStateAction<ExtractedFrame[]>, status: AssetLibraryItem['status'] = 'edited') => {
+    setFrames((prev) => {
+      const next = typeof action === 'function' ? action(prev) : action;
+      if (activeAssetId && onAssetStatusChange) {
+        onAssetStatusChange(activeAssetId, next.length > 0 ? status : 'queued');
+      }
+      return next;
+    });
+  }, [activeAssetId, onAssetStatusChange]);
 
+  // Register the handler the asset library calls to load a clip into the editor.
   useEffect(() => {
-    if (appendTrigger) {
-      appendFiles(appendTrigger.files);
-    }
-  }, [appendTrigger]);
+    setLoadIncomingClipHandler((asset: AssetLibraryItem) => {
+      revokeFrameUrls(framesRef.current);
+      setActiveAssetId(asset.id);
+      setFrames([]);
+      setSourceFiles([asset.file]);
+      setEditingFrameId(null);
+      setGifDelay(WECHAT_STICKER_PRESET.gifDelay);
+      setExportWidth(WECHAT_STICKER_PRESET.width);
+      setExportHeight(WECHAT_STICKER_PRESET.height);
+      // Reset extraction trim so a startTime left over from a longer video
+      // doesn't make a short clip extract zero frames.
+      setStartTime(0);
+      setEndTime(-1);
+      onPushToast('success', t('app.success_loaded', { filename: asset.name }));
+    });
+    return () => setLoadIncomingClipHandler(null);
+  }, [setLoadIncomingClipHandler, setActiveAssetId, setFrames, setSourceFiles, onPushToast, t]);
 
   const runProcessing = useCallback(
     (p: ProcessingPhase, message: string, work: () => Promise<void>, errorText: string) => {
@@ -71,13 +85,16 @@ export function FrameEditorTool({ onPushToast, onHasFramesChange, resetTrigger, 
           await work();
         } catch (e) {
           console.error(e);
+          if (activeAssetId && onAssetStatusChange) {
+            onAssetStatusChange(activeAssetId, 'error', errorText);
+          }
           onPushToast('error', errorText);
         } finally {
           setIsProcessing(false);
         }
       })();
     },
-    [onPushToast],
+    [activeAssetId, onAssetStatusChange, onPushToast, setIsProcessing],
   );
 
   const validateSelection = (files: File[], batchVerb: string): File[] | null => {
@@ -96,6 +113,7 @@ export function FrameEditorTool({ onPushToast, onHasFramesChange, resetTrigger, 
     const filesToProcess = validateSelection(files, 'loading');
     if (!filesToProcess) return;
     revokeFrameUrls(frames);
+    setActiveAssetId(null);
     setFrames([]);
     setSourceFiles(filesToProcess);
     const kind = classifySourceKind(filesToProcess);
@@ -106,11 +124,16 @@ export function FrameEditorTool({ onPushToast, onHasFramesChange, resetTrigger, 
     }
   };
 
-  const appendFiles = (files: File[]) => {
+  const appendFiles = useCallback((files: File[]) => {
     const filesToProcess = validateSelection(files, 'appending');
     if (!filesToProcess) return;
     processSource(filesToProcess, true);
-  };
+  }, [onPushToast, t, fps, startTime, endTime, activeAssetId]);
+
+  useEffect(() => {
+    setAppendFilesHandler(appendFiles);
+    return () => setAppendFilesHandler(null);
+  }, [setAppendFilesHandler, appendFiles]);
 
   const processSource = (filesToProcess: File[] = sourceFiles, append: boolean = false) => {
     if (filesToProcess.length === 0) return;
@@ -126,10 +149,13 @@ export function FrameEditorTool({ onPushToast, onHasFramesChange, resetTrigger, 
         if (!append) {
           revokeFrameUrls(frames);
           setFrames([]);
+          if (activeAssetId && onAssetStatusChange) {
+            onAssetStatusChange(activeAssetId, 'extracting');
+          }
         }
         let extracted: ExtractedFrame[] = [];
         const onExtractProgress = (f: ExtractedFrame[]) => {
-          if (!append) setFrames([...f]);
+          if (!append) setEditorFrames([...f], 'extracting');
         };
         if (kind === 'gif') {
           extracted = await extractFromGIF(filesToProcess[0], onExtractProgress);
@@ -140,7 +166,7 @@ export function FrameEditorTool({ onPushToast, onHasFramesChange, resetTrigger, 
         } else {
           extracted = await extractFromImages(filesToProcess, fps);
         }
-        setFrames((prev) => append ? [...prev, ...extracted] : extracted);
+        setEditorFrames((prev) => append ? [...prev, ...extracted] : extracted, 'edited');
         const n = extracted.length;
         onPushToast('success', append ? t('app.success_appended', { count: n, s: n === 1 ? '' : 's' }) : t('app.success_extracted', { count: n, s: n === 1 ? '' : 's' }));
       },
@@ -152,7 +178,7 @@ export function FrameEditorTool({ onPushToast, onHasFramesChange, resetTrigger, 
     runProcessing('deduping', t('app.finding_duplicates'), async () => {
       const before = frames.filter((f) => f.selected).length;
       const next = await findDuplicateFrames(frames, threshold);
-      setFrames(next);
+      setEditorFrames(next);
       const removed = before - next.filter((f) => f.selected).length;
       onPushToast('info', removed > 0 ? t('app.success_dedupe', { count: removed, s: removed === 1 ? '' : 's' }) : t('app.no_duplicates'));
     }, t('app.error_extract'));
@@ -161,7 +187,7 @@ export function FrameEditorTool({ onPushToast, onHasFramesChange, resetTrigger, 
     runProcessing('deduping', t('app.finding_loops'), async () => {
       const before = frames.filter((f) => f.selected).length;
       const next = await findLoopFrames(frames, threshold);
-      setFrames(next);
+      setEditorFrames(next);
       const removed = before - next.filter((f) => f.selected).length;
       onPushToast('info', removed > 0 ? t('app.success_loop', { count: removed, s: removed === 1 ? '' : 's' }) : t('app.no_loop'));
     }, t('app.error_extract'));
@@ -170,38 +196,38 @@ export function FrameEditorTool({ onPushToast, onHasFramesChange, resetTrigger, 
     runProcessing('deduping', t('app.finding_jumps'), async () => {
       const before = frames.filter((f) => f.selected).length;
       const next = await findJumpFrames(frames, threshold);
-      setFrames(next);
+      setEditorFrames(next);
       const removed = before - next.filter((f) => f.selected).length;
       onPushToast('info', removed > 0 ? t('app.success_jump', { count: removed, s: removed === 1 ? '' : 's' }) : t('app.no_jumps'));
     }, t('app.error_extract'));
 
   const handleInvertSelection = () => {
-    setFrames(frames.map((f) => ({ ...f, selected: !f.selected })));
+    setEditorFrames(frames.map((f) => ({ ...f, selected: !f.selected })));
   };
 
   const handleReverseFrames = () => {
-    setFrames([...frames].reverse());
+    setEditorFrames([...frames].reverse());
   };
 
   const handleRemoveSubsequent = (fromId: string) => {
     const idx = frames.findIndex((f) => f.id === fromId);
     if (idx === -1) return;
-    setFrames(frames.map((f, i) => (i > idx ? { ...f, selected: false } : f)));
+    setEditorFrames(frames.map((f, i) => (i > idx ? { ...f, selected: false } : f)));
   };
 
   const handleRemovePreceding = (toId: string) => {
     const idx = frames.findIndex((f) => f.id === toId);
     if (idx === -1) return;
-    setFrames(frames.map((f, i) => (i < idx ? { ...f, selected: false } : f)));
+    setEditorFrames(frames.map((f, i) => (i < idx ? { ...f, selected: false } : f)));
   };
 
   const handleRemoveBackgrounds = () =>
     runProcessing('matting', mattingMode === 'edge-key' ? t('app.cleaning_frames') : t('app.loading_matting'), async () => {
       const next = await batchRemoveBackground(frames, mattingMode, (msg, updatedFrames) => {
         setProcessMsg(msg);
-        setFrames([...updatedFrames]);
+        setEditorFrames([...updatedFrames]);
       });
-      setFrames(next);
+      setEditorFrames(next);
       onPushToast('success', t('app.success_matting'));
     }, t('app.error_matting'));
 
@@ -248,27 +274,27 @@ export function FrameEditorTool({ onPushToast, onHasFramesChange, resetTrigger, 
   };
 
   const toggleFrameSelection = (id: string) => {
-    setFrames(frames.map((f) => (f.id === id ? { ...f, selected: !f.selected } : f)));
+    setEditorFrames(frames.map((f) => (f.id === id ? { ...f, selected: !f.selected } : f)));
   };
 
   const deleteSelected = () => {
     revokeFrameUrls(frames.filter((f) => f.selected));
-    setFrames(frames.filter((f) => !f.selected));
+    setEditorFrames(frames.filter((f) => !f.selected));
   };
   const deleteUnselected = () => {
     revokeFrameUrls(frames.filter((f) => !f.selected));
-    setFrames(frames.filter((f) => f.selected));
+    setEditorFrames(frames.filter((f) => f.selected));
   };
   const selectAll = () => {
-    setFrames(frames.map((f) => ({ ...f, selected: true })));
+    setEditorFrames(frames.map((f) => ({ ...f, selected: true })));
   };
 
   const handleSelectNone = () => {
-    setFrames(frames.map((f) => ({ ...f, selected: false })));
+    setEditorFrames(frames.map((f) => ({ ...f, selected: false })));
   };
 
   const handleSelectOnly = (id: string) => {
-    setFrames(frames.map((f) => ({ ...f, selected: f.id === id })));
+    setEditorFrames(frames.map((f) => ({ ...f, selected: f.id === id })));
   };
 
   const handleSelectRange = (startId: string, endId: string) => {
@@ -279,22 +305,27 @@ export function FrameEditorTool({ onPushToast, onHasFramesChange, resetTrigger, 
     const min = Math.min(startIndex, endIndex);
     const max = Math.max(startIndex, endIndex);
     
-    setFrames(frames.map((f, i) => ({
+    setEditorFrames(frames.map((f, i) => ({
       ...f,
       selected: (i >= min && i <= max) || f.selected,
     })));
   };
 
-  const handleDuplicateSelected = () => {
+  const handleDuplicateSelected = async () => {
     const selectedFrames = frames.filter((f) => f.selected);
     if (selectedFrames.length === 0) return onPushToast('info', t('app.select_first'));
 
-    const duplicates = selectedFrames.map((f) => ({
+    // Give each duplicate its own object URL(s): a shallow copy would alias the
+    // original's blob URL, so revoking the duplicate on delete would break the
+    // original's preview.
+    const duplicates = await Promise.all(selectedFrames.map(async (f) => ({
       ...f,
       id: randomId('dup'),
       selected: false,
-    }));
-    setFrames([...frames, ...duplicates]);
+      dataUrl: await cloneFrameUrl(f.dataUrl),
+      sourceDataUrl: f.sourceDataUrl ? await cloneFrameUrl(f.sourceDataUrl) : undefined,
+    })));
+    setEditorFrames([...frames, ...duplicates]);
     onPushToast('success', t('app.success_duplicate', { count: selectedFrames.length, s: selectedFrames.length === 1 ? '' : 's' }));
   };
 
@@ -303,7 +334,9 @@ export function FrameEditorTool({ onPushToast, onHasFramesChange, resetTrigger, 
     newDataUrl: string,
     meta?: { width?: number; height?: number; close?: boolean; message?: string },
   ) => {
-    setFrames(frames.map(f => f.id === id ? {
+    const oldFrame = frames.find((f) => f.id === id);
+    if (oldFrame) revokeFrameUrls([oldFrame]); // free the previous blob URL(s)
+    setEditorFrames(frames.map(f => f.id === id ? {
       ...f,
       dataUrl: newDataUrl,
       sourceDataUrl: undefined,
@@ -321,7 +354,10 @@ export function FrameEditorTool({ onPushToast, onHasFramesChange, resetTrigger, 
     setEditingFrameId(null);
     runProcessing('batch-cropping', t('app.applying_crop'), async () => {
       const updatedFrames = await cropFrames(frames, rect, true);
-      setFrames(updatedFrames);
+      // cropFrames produced fresh data URLs for the selected frames; revoke the
+      // originals now that nothing reads them.
+      revokeFrameUrls(frames.filter((f) => f.selected));
+      setEditorFrames(updatedFrames);
       onPushToast('success', t('app.success_crop', { count: croppedCount, s: croppedCount === 1 ? '' : 's' }));
     }, t('app.error_crop'));
   };
@@ -331,7 +367,7 @@ export function FrameEditorTool({ onPushToast, onHasFramesChange, resetTrigger, 
     const idx = frames.findIndex((frame) => frame.id === id);
     if (idx === -1) return;
     revokeFrameUrls([frames[idx]]);
-    setFrames([
+    setEditorFrames([
       ...frames.slice(0, idx),
       ...splitFrames,
       ...frames.slice(idx + 1),
@@ -347,31 +383,32 @@ export function FrameEditorTool({ onPushToast, onHasFramesChange, resetTrigger, 
   const sourceKind = classifySourceKind(sourceFiles);
   const readiness = getWechatReadiness(frames, exportWidth, exportHeight, gifDelay);
 
-  // Lift "has any frames" up to App so the shared Header can enable reset/add.
-  useEffect(() => {
-    onHasFramesChange?.(frames.length > 0);
-  }, [frames.length, onHasFramesChange]);
-
   return (
     <>
       {frames.length === 0 ? (
-        <ImportScreen
-          sourceFiles={sourceFiles}
-          isProcessing={isProcessing}
-          phase={phase}
-          fps={fps}
-          setFps={setFps}
-          startTime={startTime}
-          setStartTime={setStartTime}
-          endTime={endTime}
-          setEndTime={setEndTime}
-          sourceKind={sourceKind}
-          onFilesSelected={acceptFiles}
-          onProcessSource={() => processSource()}
-        />
+        <div className="flex-1 min-h-0 w-full">
+          <section className="flex flex-col min-h-0 h-full justify-center">
+            <div className="w-full max-w-xl mx-auto flex flex-col mt-4 sm:mt-12 overflow-visible">
+              <ImportScreen
+                sourceFiles={sourceFiles}
+                isProcessing={isProcessing}
+                phase={phase}
+                fps={fps}
+                setFps={setFps}
+                startTime={startTime}
+                setStartTime={setStartTime}
+                endTime={endTime}
+                setEndTime={setEndTime}
+                sourceKind={sourceKind}
+                onFilesSelected={acceptFiles}
+                onProcessSource={() => processSource()}
+              />
+            </div>
+          </section>
+        </div>
       ) : (
-        <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4 w-full">
-          <section className="lg:col-span-9 flex flex-col relative min-h-0">
+        <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-9 gap-4 w-full">
+          <section className="lg:col-span-6 flex flex-col relative min-h-0">
             {isProcessing && <ProcessingOverlay message={processMsg} />}
             <FrameGallery
               frames={frames}
@@ -395,6 +432,7 @@ export function FrameEditorTool({ onPushToast, onHasFramesChange, resetTrigger, 
           </section>
 
           <RightSidebar
+            className="lg:col-span-3 min-h-0"
             frames={frames}
             isProcessing={isProcessing}
             gifDelay={gifDelay}

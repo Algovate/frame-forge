@@ -44,6 +44,7 @@
     "success_sprite": "精灵图已准备就绪",
     "error_sprite": "精灵图导出失败",
     "success_duplicate": "已复制 {{count}} 帧",
+    "success_clips_loaded": "已加载 {{count}} 个表情片段",
     "frame_saved": "帧已保存",
     "applying_crop": "正在将裁剪应用到选中帧...",
     "success_crop": "已裁剪 {{count}} 个选中帧",
@@ -60,7 +61,9 @@
     "cleanup": "清理背景",
     "batch_cleanup": "批量清理背景",
     "output": "输出",
-    "preset_240": "240x240 预设",
+    "presets": "预设",
+    "preset_wechat": "微信 (240x240, 10fps)",
+    "preset_discord": "Discord (128x128, 20fps)",
     "width": "宽度",
     "height": "高度",
     "export": "导出",
@@ -126,6 +129,24 @@
     "frame_selected": "第 {{number}} 帧，已选中",
     "frame_not_selected": "第 {{number}} 帧，未选中",
     "edit_frame": "编辑该帧"
+  },
+  "clips": {
+    "title": "表情队列",
+    "status_queued": "待处理",
+    "status_extracting": "提取中",
+    "status_ready": "就绪",
+    "status_edited": "已编辑",
+    "status_error": "错误"
+  },
+  "assets": {
+    "library": "素材库",
+    "use_asset": "使用素材",
+    "use_all": "使用全部素材",
+    "empty_title": "暂无素材",
+    "empty_desc": "拆分视频后，可复用的表情片段会出现在这里。",
+    "clear_all": "清空全部",
+    "delete": "删除",
+    "download": "下载"
   },
   "editor": {
     "discard": "确定要放弃未保存的修改吗？",
@@ -195,7 +216,7 @@
     "processing": "处理视频中...",
     "error_load": "加载视频失败",
     "error_process": "拆分视频失败",
-    "success_split": "视频已拆分并打包为 ZIP",
+    "success_split": "视频拆分结果已准备就绪",
     "rows": "行数",
     "cols": "列数",
     "gap": "分割线宽度 (px)",
@@ -205,6 +226,18 @@
     "output_resolution": "单格输出分辨率",
     "error_too_large": "文件过大 (最大 500MB)",
     "split_export": "拆分并导出 ZIP",
+    "split_video": "拆分视频",
+    "generating_zip": "正在生成 ZIP...",
+    "download_zip": "下载 ZIP",
+    "edit_all": "全部放入逐帧编辑器",
+    "edit_cell": "编辑",
+    "results": "拆分结果",
+    "trim": "裁剪（可选）",
+    "start_time": "开始时间 (秒)",
+    "end_time": "结束时间 (秒)",
+    "link_padding": "联动边距",
+    "error_trim_invalid": "起止时间必须为有效的非负数。",
+    "error_end_before_start": "结束时间必须大于开始时间。",
     "processing_step": "正在处理第 {{part}} 部分 (共 {{total}} 部分)..."
   }
 }

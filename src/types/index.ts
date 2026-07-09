@@ -15,6 +15,21 @@ export interface ExtractedFrame {
 
 export type StickerSourceKind = 'gif' | 'video' | 'static-image' | 'static-images-batch';
 
+export interface AssetLibraryItem {
+  id: string;
+  kind: 'split-video';
+  name: string;
+  blob: Blob;
+  file: File;
+  row?: number;
+  col?: number;
+  width: number;
+  height: number;
+  createdAt: number;
+  status?: 'queued' | 'extracting' | 'edited' | 'error';
+  errorMessage?: string;
+}
+
 export type MattingMode = 'edge-key' | 'conservative' | 'balanced';
 
 export interface WechatReadiness {
