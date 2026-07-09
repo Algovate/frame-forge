@@ -29,6 +29,7 @@
     "no_jumps": "未发现跳跃帧",
     "cleaning_frames": "正在清理帧...",
     "loading_matting": "正在加载 AI 模型进行抠图...",
+    "downloading_model": "正在下载 AI 模型… {{percent}}%",
     "success_matting": "背景移除完成",
     "error_matting": "背景移除失败",
     "select_first": "请至少选择一帧",

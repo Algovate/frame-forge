@@ -149,7 +149,8 @@ const EDGE_RECOVERY_RADIUS = 2;
 export const batchRemoveBackground = async (
   frames: ExtractedFrame[],
   mode: MattingMode = 'edge-key',
-  onProgress?: (msg: string, frames: ExtractedFrame[]) => void
+  onProgress?: (msg: string, frames: ExtractedFrame[]) => void,
+  onModelProgress?: (key: string, current: number, total: number) => void,
 ): Promise<ExtractedFrame[]> => {
   const newFrames = [...frames];
   const verb = mode === 'edge-key' ? 'Cleaning' : 'Matting';
@@ -160,7 +161,7 @@ export const batchRemoveBackground = async (
     const sourceDataUrl = newFrames[i].sourceDataUrl ?? newFrames[i].dataUrl;
     const transparentBlob = mode === 'edge-key'
       ? await removeEdgeBackground(sourceDataUrl)
-      : await removeAiBackground(sourceDataUrl, mode);
+      : await removeAiBackground(sourceDataUrl, mode, onModelProgress);
 
     // Revoke the previous URL if it was one we created (a prior matting run),
     // so re-matting doesn't leak decoded image data.
@@ -182,12 +183,33 @@ const AI_MATTING_POLICY: Record<AiMattingMode, { model: Config['model']; recover
   balanced: { model: 'isnet_fp16', recoverEdges: false },
 };
 
-async function removeAiBackground(sourceDataUrl: string, mode: AiMattingMode): Promise<Blob> {
+async function removeAiBackground(
+  sourceDataUrl: string,
+  mode: AiMattingMode,
+  onModelProgress?: (key: string, current: number, total: number) => void,
+): Promise<Blob> {
   const { model, recoverEdges } = AI_MATTING_POLICY[mode];
   const res = await fetch(sourceDataUrl);
   const blob = await res.blob();
-  const mattedBlob = await removeBackground(blob, { model, output: { format: 'image/png' } });
+  // Run inference off the main thread (proxyToWorker) so the gallery/preview
+  // stay responsive during matting, and on GPU when WebGPU is available — far
+  // faster on supporting hardware. `progress` fires during the one-time model
+  // download (init is memoized by config, so it only runs on the first call).
+  const mattedBlob = await removeBackground(blob, {
+    model,
+    device: preferredDevice(),
+    proxyToWorker: true,
+    output: { format: 'image/png' },
+    progress: onModelProgress,
+  });
   return recoverEdges ? recoverForegroundEdges(blob, mattedBlob, EDGE_RECOVERY_RADIUS) : mattedBlob;
+}
+
+/** Prefer GPU inference when WebGPU is exposed; otherwise let imgly use CPU.
+ *  Requesting 'gpu' without WebGPU support would fail to init, so the capability
+ *  check is mandatory. */
+function preferredDevice(): Config['device'] {
+  return typeof navigator !== 'undefined' && 'gpu' in navigator ? 'gpu' : 'cpu';
 }
 
 /** Fast color-key cleanup: sample the background from the four corners and

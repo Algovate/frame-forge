@@ -248,10 +248,21 @@ export function FrameEditorTool({
 
   const handleRemoveBackgrounds = () =>
     runProcessing('matting', mattingMode === 'edge-key' ? t('app.cleaning_frames') : t('app.loading_matting'), async () => {
-      const next = await batchRemoveBackground(frames, mattingMode, (msg, updatedFrames) => {
-        setProcessMsg(msg);
-        setEditorFrames([...updatedFrames]);
-      });
+      const next = await batchRemoveBackground(
+        frames,
+        mattingMode,
+        (msg, updatedFrames) => {
+          setProcessMsg(msg);
+          setEditorFrames([...updatedFrames]);
+        },
+        (_key, current, total) => {
+          // Fires during the one-time model download — surface a real percentage
+          // so the first AI matting doesn't look frozen on a blank spinner.
+          if (total > 0) {
+            setProcessMsg(t('app.downloading_model', { percent: Math.min(100, Math.round((current / total) * 100)) }));
+          }
+        },
+      );
       setEditorFrames(next);
       onPushToast('success', t('app.success_matting'));
     }, t('app.error_matting'));
