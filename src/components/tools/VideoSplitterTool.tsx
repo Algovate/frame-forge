@@ -6,9 +6,9 @@ import {
   Upload,
   Loader2,
   Grid3X3,
-  Download,
   Link2,
   Link2Off,
+  Package,
   RefreshCcw,
   Volume2,
   VolumeX,
@@ -16,7 +16,14 @@ import {
   Frame,
   SlidersHorizontal,
 } from 'lucide-react';
-import { splitVideoGrid, preloadFFmpeg, getVideoDimensions, MAX_VIDEO_SIZE } from '../../utils/ffmpegSpliter';
+import {
+  createSplitZip,
+  splitVideoGridParts,
+  preloadFFmpeg,
+  getVideoDimensions,
+  MAX_VIDEO_SIZE,
+  type SplitVideoPart,
+} from '../../utils/ffmpegSpliter';
 import { downloadBlob } from '../../utils/exporters';
 import { ProcessingOverlay } from '../ProcessingOverlay';
 import { HEADING, SLIDER_STYLES } from '../ui';
@@ -24,13 +31,18 @@ import type { ToastType } from '../Toast';
 
 interface VideoSplitterToolProps {
   onPushToast: (type: ToastType, message: string) => void;
+  onAddSplitPartsToAssetLibrary: (parts: SplitVideoPart[]) => void;
 }
 
-export function VideoSplitterTool({ onPushToast }: VideoSplitterToolProps) {
+export function VideoSplitterTool({
+  onPushToast,
+  onAddSplitPartsToAssetLibrary,
+}: VideoSplitterToolProps) {
   const { t } = useTranslation();
   const [sourceVideo, setSourceVideo] = useState<File | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoDimensions, setVideoDimensions] = useState<{ width: number; height: number } | null>(null);
+  const [splitParts, setSplitParts] = useState<SplitVideoPart[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processMsg, setProcessMsg] = useState('');
 
@@ -44,6 +56,9 @@ export function VideoSplitterTool({ onPushToast }: VideoSplitterToolProps) {
   const setPaddingSide = (side: 'top' | 'right' | 'bottom' | 'left', val: number) => {
     setPadding((prev) => (isPaddingLinked ? { top: val, right: val, bottom: val, left: val } : { ...prev, [side]: val }));
   };
+
+  const [startTimeStr, setStartTimeStr] = useState<string>('');
+  const [endTimeStr, setEndTimeStr] = useState<string>('');
 
   const [isDragOver, setIsDragOver] = useState(false);
   const dragCounter = useRef(0);
@@ -61,6 +76,10 @@ export function VideoSplitterTool({ onPushToast }: VideoSplitterToolProps) {
     return () => URL.revokeObjectURL(videoUrl);
   }, [videoUrl]);
 
+  useEffect(() => {
+    setSplitParts([]);
+  }, [rows, cols, gap, padding, removeAudio, startTimeStr, endTimeStr]);
+
   const acceptVideo = useCallback(
     async (file: File | undefined | null) => {
       if (!file) return;
@@ -75,6 +94,7 @@ export function VideoSplitterTool({ onPushToast }: VideoSplitterToolProps) {
       currentFileRef.current = file;
       setSourceVideo(file);
       setVideoUrl(URL.createObjectURL(file));
+      setSplitParts([]);
       try {
         const dims = await getVideoDimensions(file);
         if (currentFileRef.current === file) setVideoDimensions(dims);
@@ -119,16 +139,32 @@ export function VideoSplitterTool({ onPushToast }: VideoSplitterToolProps) {
   const handleSplit = async () => {
     if (!sourceVideo) return;
 
+    const parsedStart = startTimeStr !== '' ? parseFloat(startTimeStr) : undefined;
+    const parsedEnd = endTimeStr !== '' ? parseFloat(endTimeStr) : undefined;
+
+    if (parsedStart !== undefined && (Number.isNaN(parsedStart) || parsedStart < 0)) {
+      onPushToast('error', t('splitter.error_trim_invalid'));
+      return;
+    }
+    if (parsedEnd !== undefined && (Number.isNaN(parsedEnd) || parsedEnd < 0)) {
+      onPushToast('error', t('splitter.error_trim_invalid'));
+      return;
+    }
+    if (parsedStart !== undefined && parsedEnd !== undefined && parsedEnd <= parsedStart) {
+      onPushToast('error', t('splitter.error_end_before_start'));
+      return;
+    }
+
     setIsProcessing(true);
     setProcessMsg(t('splitter.loading'));
 
     try {
-      const zipBlob = await splitVideoGrid(sourceVideo, rows, cols, padding, gap, removeAudio, videoDimensions ?? undefined, (part, total) => {
+      const parts = await splitVideoGridParts(sourceVideo, rows, cols, padding, gap, removeAudio, videoDimensions ?? undefined, parsedStart, parsedEnd, (part, total) => {
         setProcessMsg(t('splitter.processing_step', { part, total }));
       });
 
-      const baseName = sourceVideo.name.replace(/\.[^.]+$/, '');
-      downloadBlob(zipBlob, `${baseName}_grid_split.zip`);
+      setSplitParts(parts);
+      onAddSplitPartsToAssetLibrary(parts);
 
       onPushToast('success', t('splitter.success_split'));
     } catch (e) {
@@ -144,6 +180,26 @@ export function VideoSplitterTool({ onPushToast }: VideoSplitterToolProps) {
     setSourceVideo(null);
     setVideoDimensions(null);
     setVideoUrl(null);
+    setSplitParts([]);
+    setStartTimeStr('');
+    setEndTimeStr('');
+  };
+
+  const handleDownloadZip = async () => {
+    if (!sourceVideo || splitParts.length === 0) return;
+    setIsProcessing(true);
+    setProcessMsg(t('splitter.generating_zip'));
+    try {
+      const zipBlob = await createSplitZip(splitParts);
+      const baseName = sourceVideo.name.replace(/\.[^.]+$/, '');
+      downloadBlob(zipBlob, `${baseName}_grid_split.zip`);
+      onPushToast('success', t('app.success_zip'));
+    } catch (e) {
+      console.error(e);
+      onPushToast('error', t('app.error_zip'));
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleResetPadding = () => {
@@ -166,47 +222,51 @@ export function VideoSplitterTool({ onPushToast }: VideoSplitterToolProps) {
   // ── Empty state: ImportScreen-style centered dropzone ──────────────────────
   if (!sourceVideo) {
     return (
-      <div className="w-full max-w-xl mx-auto flex flex-col mt-4 sm:mt-12 overflow-visible">
-        <div className="glass-panel rounded-card p-5">
-          <h2 className={HEADING}>
-            <Upload className="w-5 h-5 text-primary" aria-hidden="true" /> {t('splitter.title')}
-          </h2>
-          <label
-            onDragEnter={onDragEnter}
-            onDragOver={onDragOver}
-            onDragLeave={onDragLeave}
-            onDrop={onDrop}
-            className={`group relative flex flex-col items-center justify-center rounded-control border-2 border-dashed text-center cursor-pointer transition-colors min-h-[200px] p-6 ${
-              isDragOver
-                ? 'border-primary bg-primary/5 shadow-[0_0_0_4px_var(--accent-glow)]'
-                : 'border-hairline-strong hover:border-primary/50 hover:bg-white/[0.02]'
-            }`}
-          >
-            <input
-              type="file"
-              accept="video/*"
-              onChange={(e) => acceptVideo(e.target.files?.[0])}
-              className="peer sr-only"
-            />
-            <Upload
-              className={`w-8 h-8 mb-2 transition-colors ${
-                isDragOver ? 'text-primary' : 'text-muted group-hover:text-primary'
-              }`}
-              aria-hidden="true"
-            />
-            <span className="text-sm font-medium text-foreground">{t('splitter.drop_prompt')}</span>
-            <span className="text-xs text-muted mt-1">{t('splitter.click_browse')}</span>
-            <span className="text-xs text-muted/70 mt-4 max-w-sm leading-relaxed">{t('splitter.desc')}</span>
-          </label>
-        </div>
+      <div className="flex-1 min-h-0 w-full">
+        <section className="flex flex-col min-h-0 h-full justify-center">
+          <div className="w-full max-w-xl mx-auto flex flex-col overflow-visible">
+            <div className="glass-panel rounded-card p-5">
+              <h2 className={HEADING}>
+                <Upload className="w-5 h-5 text-primary" aria-hidden="true" /> {t('splitter.title')}
+              </h2>
+              <label
+                onDragEnter={onDragEnter}
+                onDragOver={onDragOver}
+                onDragLeave={onDragLeave}
+                onDrop={onDrop}
+                className={`group relative flex flex-col items-center justify-center rounded-control border-2 border-dashed text-center cursor-pointer transition-colors min-h-[200px] p-6 ${
+                  isDragOver
+                    ? 'border-primary bg-primary/5 shadow-[0_0_0_4px_var(--accent-glow)]'
+                    : 'border-hairline-strong hover:border-primary/50 hover:bg-white/[0.02]'
+                }`}
+              >
+                <input
+                  type="file"
+                  accept="video/*"
+                  onChange={(e) => acceptVideo(e.target.files?.[0])}
+                  className="peer sr-only"
+                />
+                <Upload
+                  className={`w-8 h-8 mb-2 transition-colors ${
+                    isDragOver ? 'text-primary' : 'text-muted group-hover:text-primary'
+                  }`}
+                  aria-hidden="true"
+                />
+                <span className="text-sm font-medium text-foreground">{t('splitter.drop_prompt')}</span>
+                <span className="text-xs text-muted mt-1">{t('splitter.click_browse')}</span>
+                <span className="text-xs text-muted/70 mt-4 max-w-sm leading-relaxed">{t('splitter.desc')}</span>
+              </label>
+            </div>
+          </div>
+        </section>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4 w-full">
+    <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-9 gap-4 w-full">
       {/* Preview */}
-      <section className="lg:col-span-9 flex flex-col relative min-h-0">
+      <section className="lg:col-span-6 flex flex-col relative min-h-0">
         <div className="flex-1 glass-panel rounded-card flex flex-col items-center justify-center p-4 relative overflow-hidden">
           {isProcessing && <ProcessingOverlay message={processMsg} />}
 
@@ -232,8 +292,8 @@ export function VideoSplitterTool({ onPushToast }: VideoSplitterToolProps) {
         </div>
       </section>
 
-      {/* Settings */}
-      <aside className="lg:col-span-3 space-y-4 h-full overflow-y-auto custom-scrollbar pl-2 pb-6">
+      {/* Right Sidebar */}
+      <section className="lg:col-span-3 min-h-0 flex flex-col">
         {/* Source */}
         <div className="glass-panel rounded-card p-3">
           <h2 className={HEADING}>
@@ -258,6 +318,39 @@ export function VideoSplitterTool({ onPushToast }: VideoSplitterToolProps) {
                 {videoDimensions.width} × {videoDimensions.height}
               </span>
             )}
+          </div>
+        </div>
+
+        {/* Trim */}
+        <div className="glass-panel rounded-card p-3">
+          <h2 className={HEADING}>
+            <SlidersHorizontal className="w-5 h-5 text-primary" aria-hidden="true" /> {t('splitter.trim', 'Trim (Optional)')}
+          </h2>
+          <div className="grid grid-cols-2 gap-4">
+            <label className="flex flex-col gap-1">
+              <span className="text-[10px] text-muted">{t('splitter.start_time', 'Start Time (s)')}</span>
+              <input
+                type="number"
+                min="0"
+                step="0.1"
+                value={startTimeStr}
+                onChange={(e) => setStartTimeStr(e.target.value)}
+                placeholder="0.0"
+                className="w-full h-8 bg-surface border border-hairline rounded px-2 text-xs text-foreground placeholder:text-muted/50 focus:outline-none focus:border-primary/50"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-[10px] text-muted">{t('splitter.end_time', 'End Time (s)')}</span>
+              <input
+                type="number"
+                min="0"
+                step="0.1"
+                value={endTimeStr}
+                onChange={(e) => setEndTimeStr(e.target.value)}
+                placeholder="e.g. 5.5"
+                className="w-full h-8 bg-surface border border-hairline rounded px-2 text-xs text-foreground placeholder:text-muted/50 focus:outline-none focus:border-primary/50"
+              />
+            </label>
           </div>
         </div>
 
@@ -338,12 +431,26 @@ export function VideoSplitterTool({ onPushToast }: VideoSplitterToolProps) {
               disabled={isProcessing || (videoDimensions !== null && !gridValid)}
               className="w-full min-h-[44px] bg-primary hover:bg-primary-hover text-white rounded-control font-semibold flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-[0_0_20px_var(--accent-glow)]"
             >
-              {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-4 h-4" />}
-              {isProcessing ? t('splitter.processing') : t('splitter.split_export')}
+              {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Grid3X3 className="w-4 h-4" />}
+              {isProcessing ? t('splitter.processing') : t('splitter.split_video')}
             </button>
+
+            {splitParts.length > 0 && (
+              <div className="grid grid-cols-1 gap-2">
+                <button
+                  type="button"
+                  onClick={handleDownloadZip}
+                  disabled={isProcessing}
+                  className="w-full min-h-[38px] rounded-control border border-hairline text-muted hover:text-foreground hover:bg-surface-hover text-xs font-medium flex items-center justify-center gap-2 disabled:opacity-50 transition-colors"
+                >
+                  <Package className="w-4 h-4" />
+                  {t('splitter.download_zip')}
+                </button>
+              </div>
+            )}
           </div>
         </div>
-      </aside>
+      </section>
     </div>
   );
 }

@@ -17,6 +17,7 @@ import { HEADING, FIELD, SLIDER_STYLES } from './ui';
 import { clampMin } from '../utils/numbers';
 
 interface RightSidebarProps {
+  className?: string;
   frames: ExtractedFrame[];
   isProcessing: boolean;
   gifDelay: number;
@@ -56,7 +57,7 @@ export function RightSidebar(props: RightSidebarProps) {
   const disableFrameActions = props.isProcessing || !hasSelectedFrames;
 
   return (
-    <aside className="lg:col-span-3 space-y-4 h-full overflow-y-auto custom-scrollbar pl-2 pb-6">
+    <aside className={`lg:col-span-3 space-y-4 h-full overflow-y-auto custom-scrollbar pl-2 pb-6 ${props.className ?? ''}`}>
 
       {/* Preview */}
       <div className="glass-panel rounded-card p-3 flex flex-col">
@@ -83,26 +84,6 @@ export function RightSidebar(props: RightSidebarProps) {
           <div className="relative aspect-[4/3] sm:aspect-video w-full">
             <AnimationPreview frames={props.frames} delayMs={props.gifDelay} />
           </div>
-        )}
-
-
-        {!isStatic && (
-          <fieldset className="mt-2">
-            <div className="flex justify-between items-center mb-1">
-              <legend className="text-[11px] text-muted">{t('sidebar.frame_delay')}</legend>
-              <span className="text-[11px] font-mono text-muted">{props.gifDelay} ms</span>
-            </div>
-            <div className="px-1 pt-1 pb-1">
-              <Slider
-                min={20}
-                max={500}
-                step={10}
-                value={props.gifDelay}
-                onChange={(value) => props.setGifDelay(clampMin(value as number, 20, 100))}
-                styles={SLIDER_STYLES}
-              />
-            </div>
-          </fieldset>
         )}
       </div>
 
@@ -147,19 +128,47 @@ export function RightSidebar(props: RightSidebarProps) {
           <div className="flex items-center gap-1.5">
             <SlidersHorizontal className="w-4 h-4 text-primary" aria-hidden="true" /> {t('sidebar.output')}
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              props.setExportWidth(240);
-              props.setExportHeight(240);
+          <select
+            className="ml-auto text-[10px] bg-surface border border-hairline rounded px-1.5 py-0.5 outline-none cursor-pointer text-primary hover:bg-primary/10 transition-colors"
+            value=""
+            onChange={(e) => {
+              if (e.target.value === 'wechat') {
+                props.setExportWidth(240);
+                props.setExportHeight(240);
+                props.setGifDelay(100);
+              } else if (e.target.value === 'discord') {
+                props.setExportWidth(128);
+                props.setExportHeight(128);
+                props.setGifDelay(50);
+              }
             }}
             disabled={props.isProcessing}
-            className="ml-auto text-[10px] text-primary hover:bg-primary/10 px-1.5 py-0.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {t('sidebar.preset_240')}
-          </button>
+            <option value="" disabled hidden>{t('sidebar.presets', 'Presets')}</option>
+            <option value="wechat">{t('sidebar.preset_wechat', 'WeChat (240x240, 10fps)')}</option>
+            <option value="discord">{t('sidebar.preset_discord', 'Discord (128x128, 20fps)')}</option>
+          </select>
         </h2>
-        <div className="space-y-2">
+        <div className="space-y-3">
+          {!isStatic && (
+            <fieldset>
+              <div className="flex justify-between items-center mb-1">
+                <legend className="text-[11px] text-muted">{t('sidebar.frame_delay')}</legend>
+                <span className="text-[11px] font-mono text-muted">{props.gifDelay} ms</span>
+              </div>
+              <div className="px-1 pt-1 pb-1">
+                <Slider
+                  min={20}
+                  max={500}
+                  step={10}
+                  value={props.gifDelay}
+                  onChange={(value) => props.setGifDelay(clampMin(value as number, 20, 100))}
+                  styles={SLIDER_STYLES}
+                />
+              </div>
+            </fieldset>
+          )}
+
           <div className="grid grid-cols-2 gap-2">
             <label htmlFor="exp-width" className="block">
               <span className="block text-[10px] text-muted mb-0.5">{t('sidebar.width')}</span>

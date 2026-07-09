@@ -47,6 +47,10 @@ import {
 } from '../utils/canvasEditor';
 import { SLIDER_STYLES } from './ui';
 
+/** Maximum undo states retained. Index 0 (the original) is always preserved;
+ *  older edits are dropped beyond this depth to bound memory. */
+const MAX_HISTORY_DEPTH = 15;
+
 interface FrameEditorModalProps {
   frame: ExtractedFrame | null;
   previousFrame?: ExtractedFrame | null;
@@ -337,6 +341,10 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
     setHistory((prev) => {
       const newHistory = prev.slice(0, historyIndex + 1);
       newHistory.push(dataUrl);
+      // Cap history depth to prevent memory exhaustion, keeping index 0 (original)
+      if (newHistory.length > MAX_HISTORY_DEPTH) {
+        newHistory.splice(1, newHistory.length - MAX_HISTORY_DEPTH);
+      }
       setHistoryIndex(newHistory.length - 1);
       return newHistory;
     });

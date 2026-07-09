@@ -1,10 +1,8 @@
 import { parseGIF, decompressFrames } from 'gifuct-js';
 import type { ExtractedFrame } from '../types';
-import { loadImage, randomId } from './media';
-
-/** Sanity cap: beyond this, full-resolution PNG data URLs in React state
- *  would OOM the tab. Surfaced as a clear error rather than a silent crash. */
-const MAX_VIDEO_FRAMES = 1000;
+import { loadImage, randomId, canvasToBlobUrl, revokeFrameUrls } from './media';
+import { getFFmpeg, fileDataToBlob } from './ffmpegSpliter';
+import { fetchFile } from '@ffmpeg/util';
 
 export const extractFromGIF = async (
   file: File,
@@ -56,9 +54,11 @@ export const extractFromGIF = async (
     ctx.clearRect(0, 0, screenW, screenH);
     ctx.drawImage(tempCanvas, 0, 0);
 
+    const blobUrl = await canvasToBlobUrl(canvas);
+
     extracted.push({
       id: randomId('gif', i),
-      dataUrl: canvas.toDataURL('image/png'),
+      dataUrl: blobUrl,
       width: canvas.width,
       height: canvas.height,
       time: currentTime,
@@ -86,96 +86,86 @@ export const extractFromVideo = async (
   endTime: number = -1,
   onProgress?: (frame: ExtractedFrame[]) => void
 ): Promise<{ frames: ExtractedFrame[]; videoWidth: number; videoHeight: number }> => {
-  const video = document.createElement('video');
-  const src = URL.createObjectURL(file);
-  video.src = src;
-  video.muted = true;
-  video.playsInline = true;
-  video.preload = 'auto';
+  const ffmpeg = await getFFmpeg();
+  const inputName = `input_${Date.now()}.mp4`;
+  await ffmpeg.writeFile(inputName, await fetchFile(file));
+
+  // Build FFmpeg command
+  const args: string[] = [];
+  if (startTime > 0) {
+    args.push('-ss', startTime.toString());
+  }
+
+  args.push('-i', inputName);
+
+  if (endTime >= 0 && endTime > startTime) {
+    args.push('-t', (endTime - startTime).toString());
+  }
+
+  args.push('-vf', `fps=${fps}`);
+  args.push('frame_%04d.png');
+
+  const extracted: ExtractedFrame[] = [];
+  let videoWidth = 0;
+  let videoHeight = 0;
+  let completed = false;
 
   try {
-    // loadeddata (not just metadata) so frame data is available for seeking.
-    await new Promise<void>((resolve, reject) => {
-      const onReady = () => finish(resolve);
-      const onError = () => finish(() => reject(new Error('Could not read this video')));
-      const finish = (done: () => void) => {
-        video.removeEventListener('loadeddata', onReady);
-        video.removeEventListener('error', onError);
-        done();
-      };
-      video.addEventListener('loadeddata', onReady);
-      video.addEventListener('error', onError);
-    });
+    await ffmpeg.exec(args);
 
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('No 2D context');
-    if (!video.videoWidth || !video.videoHeight) throw new Error('Video has no dimensions');
+    const dir = await ffmpeg.listDir('.');
+    const pngFiles = dir
+      .filter((f) => f.name.startsWith('frame_') && f.name.endsWith('.png'))
+      .sort((a, b) => a.name.localeCompare(b.name));
 
-    const duration = video.duration;
-    if (!isFinite(duration) || duration <= 0) throw new Error('Video duration is unknown');
+    for (let i = 0; i < pngFiles.length; i++) {
+      const data = await ffmpeg.readFile(pngFiles[i].name);
+      const blob = fileDataToBlob(data, 'image/png');
+      const dataUrl = URL.createObjectURL(blob);
 
-    const actualEndTime = endTime >= 0 ? Math.min(endTime, duration) : duration;
-    const clampedStart = Math.max(0, Math.min(startTime, actualEndTime));
+      if (i === 0) {
+        const img = await loadImage(dataUrl);
+        videoWidth = img.width;
+        videoHeight = img.height;
+      }
 
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-
-    const timeStep = 1 / fps;
-    // Integer frame count via index, not float accumulation, so the boundary
-    // is stable and frame ids don't collide.
-    const frameCount = Math.max(0, Math.floor((actualEndTime - clampedStart) / timeStep) + 1);
-    if (frameCount > MAX_VIDEO_FRAMES) {
-      throw new Error(
-        `That would produce ${frameCount} frames — lower the FPS or trim the timeline to stay under ${MAX_VIDEO_FRAMES}.`
-      );
-    }
-
-    const captureFrame = (time: number): Promise<string> =>
-      new Promise((resolve, reject) => {
-        let settled = false;
-        const cleanup = () => {
-          window.clearTimeout(timeout);
-          video.removeEventListener('seeked', onSeeked);
-          video.removeEventListener('error', onError);
-        };
-        const timeout = window.setTimeout(() => {
-          if (settled) return;
-          settled = true;
-          cleanup();
-          reject(new Error(`Timed out seeking to ${time.toFixed(2)}s`));
-        }, 5000);
-        const onSeeked = () => {
-          if (settled) return;
-          settled = true;
-          cleanup();
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          resolve(canvas.toDataURL('image/png'));
-        };
-        const onError = () => {
-          if (settled) return;
-          settled = true;
-          cleanup();
-          reject(new Error('Video error while seeking'));
-        };
-        video.addEventListener('seeked', onSeeked);
-        video.addEventListener('error', onError);
-        video.currentTime = time;
+      extracted.push({
+        id: randomId('vid', i),
+        dataUrl,
+        width: videoWidth,
+        height: videoHeight,
+        time: startTime + i * (1 / fps),
+        selected: true
       });
 
-    const extracted: ExtractedFrame[] = [];
-    for (let i = 0; i < frameCount; i++) {
-      const t = clampedStart + i * timeStep;
-      const dataUrl = await captureFrame(t);
-      extracted.push({ id: randomId('vid', i), dataUrl, width: canvas.width, height: canvas.height, time: t, selected: true });
+      // Clean up WASM filesystem memory as we go
+      await ffmpeg.deleteFile(pngFiles[i].name);
+
       if (onProgress) onProgress([...extracted]);
-      await new Promise((r) => setTimeout(r, 0)); // yield to UI
     }
 
-    return { frames: extracted, videoWidth: canvas.width, videoHeight: canvas.height };
+    completed = true;
   } finally {
-    URL.revokeObjectURL(src);
+    if (!completed) {
+      // Reclaim any blob URLs we created before the failure, then purge leftover
+      // WASM frames FFmpeg produced — otherwise a crashed extract leaks URLs and
+      // its stale frame_*.png poison the next extract/export via shared MEMFS.
+      revokeFrameUrls(extracted);
+      try {
+        const remaining = await ffmpeg.listDir('.');
+        for (const f of remaining) {
+          if (f.name.startsWith('frame_') && f.name.endsWith('.png')) {
+            await ffmpeg.deleteFile(f.name).catch(() => {});
+          }
+        }
+      } catch {
+        // listDir best-effort; the input delete below still runs
+      }
+    }
+    await ffmpeg.deleteFile(inputName).catch(() => {});
   }
+
+  return { frames: extracted, videoWidth, videoHeight };
 };
 
 /** Decode one or more static images in parallel, assigning each an index-based
@@ -193,9 +183,10 @@ export const extractFromImages = async (files: File[], fps: number): Promise<Ext
         const ctx = canvas.getContext('2d');
         if (!ctx) throw new Error('No 2D context available');
         ctx.drawImage(img, 0, 0);
+        const blobUrl = await canvasToBlobUrl(canvas);
         return {
           id: randomId('img', i),
-          dataUrl: canvas.toDataURL('image/png'),
+          dataUrl: blobUrl,
           width: canvas.width,
           height: canvas.height,
           time: i * (1 / fps),

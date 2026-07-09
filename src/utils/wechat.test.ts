@@ -26,7 +26,7 @@ describe('getWechatReadiness', () => {
       isSquare: true,
       isWechatSize: true,
       hasFrames: true,
-      messages: ['Ready for WeChat GIF export.'],
+      messages: ['wechat.ready'],
     });
   });
 
@@ -37,12 +37,12 @@ describe('getWechatReadiness', () => {
       isSquare: true,
       isWechatSize: true,
       hasFrames: true,
-      messages: ['Ready for WeChat GIF export.'],
+      messages: ['wechat.ready'],
     });
   });
 
   it('reports actionable problems', () => {
-    expect(getWechatReadiness(frames, 320, 240, 100).messages).toContain('Set output size to 240 x 240.');
-    expect(getWechatReadiness([], 240, 240, 100).messages).toContain('Select at least one sticker frame.');
+    expect(getWechatReadiness(frames, 320, 240, 100).messages).toContain('wechat.size_240');
+    expect(getWechatReadiness([], 240, 240, 100).messages).toContain('wechat.select_frame');
   });
 });

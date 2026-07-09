@@ -16,7 +16,6 @@
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
     "@imgly/background-removal": "^1.7.0",
-    "gif.js": "^0.2.0",
     "gifuct-js": "^2.1.2",
     "i18next": "^26.3.4",
     "jszip": "^3.10.1",
@@ -26,7 +25,8 @@
     "react-colorful": "^5.7.0",
     "react-dom": "^19.2.7",
     "react-i18next": "^17.0.8",
-    "react-image-crop": "^11.1.2"
+    "react-image-crop": "^11.1.2",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.2",
