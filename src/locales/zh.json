@@ -5,6 +5,10 @@
     "add_frames": "添加帧",
     "new_source": "重新开始"
   },
+  "tools": {
+    "frame_editor": "逐帧编辑器",
+    "video_splitter": "视频拆分器"
+  },
   "app": {
     "error_batch_static": "批量{{verb}}仅支持静态图片。",
     "error_unsupported": "不支持的文件格式。请使用图片、视频或 GIF。",
@@ -178,5 +182,29 @@
     "hint_zoom": "Alt + 滚轮: 缩放",
     "hint_pan": "Alt 或 鼠标中键拖拽: 平移",
     "fit": "适应窗口"
+  },
+  "splitter": {
+    "title": "视频网格拆分器",
+    "source": "源文件",
+    "grid": "网格",
+    "output": "输出",
+    "desc": "上传一个视频，并将其切割为多个网格小视频。",
+    "drop_prompt": "将视频拖拽到此处",
+    "click_browse": "或点击浏览",
+    "loading": "加载视频中...",
+    "processing": "处理视频中...",
+    "error_load": "加载视频失败",
+    "error_process": "拆分视频失败",
+    "success_split": "视频已拆分并打包为 ZIP",
+    "rows": "行数",
+    "cols": "列数",
+    "gap": "分割线宽度 (px)",
+    "padding": "四边距 (px)",
+    "reset_padding": "重置边距",
+    "remove_audio": "静音输出 (减小体积)",
+    "output_resolution": "单格输出分辨率",
+    "error_too_large": "文件过大 (最大 500MB)",
+    "split_export": "拆分并导出 ZIP",
+    "processing_step": "正在处理第 {{part}} 部分 (共 {{total}} 部分)..."
   }
 }

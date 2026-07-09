@@ -5,6 +5,10 @@
     "add_frames": "Add Frames",
     "new_source": "New Source"
   },
+  "tools": {
+    "frame_editor": "Frame Editor",
+    "video_splitter": "Video Splitter"
+  },
   "app": {
     "error_batch_static": "Batch {{verb}} only supports static images.",
     "error_unsupported": "Unsupported file. Use an image, video, or GIF.",
@@ -178,5 +182,29 @@
     "hint_zoom": "Alt + Scroll: zoom",
     "hint_pan": "Alt / Middle-drag: pan",
     "fit": "Fit"
+  },
+  "splitter": {
+    "title": "Video Grid Splitter",
+    "source": "Source",
+    "grid": "Grid",
+    "output": "Output",
+    "desc": "Upload a video and split it into a grid of smaller videos.",
+    "drop_prompt": "Drop a video file here",
+    "click_browse": "or click to browse",
+    "loading": "Loading video...",
+    "processing": "Processing video...",
+    "error_load": "Failed to load video",
+    "error_process": "Failed to split video",
+    "success_split": "Video split and exported as ZIP",
+    "rows": "Rows",
+    "cols": "Cols",
+    "gap": "Gap (px)",
+    "padding": "Padding (px)",
+    "reset_padding": "Reset padding",
+    "remove_audio": "Remove Audio (Smaller file)",
+    "output_resolution": "Output cell resolution",
+    "error_too_large": "File too large (Max 500MB)",
+    "split_export": "Split & Export ZIP",
+    "processing_step": "Processing part {{part}} of {{total}}..."
   }
 }
