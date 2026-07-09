@@ -77,6 +77,12 @@ export function FrameEditorTool({
 
   const runProcessing = useCallback(
     (p: ProcessingPhase, message: string, work: () => Promise<void>, errorText: string) => {
+      // Re-entrancy guard: read the LIVE store (not the render-captured value) so
+      // a rapid double-click can't launch a second extract/matting/export job on
+      // the shared singleton ffmpeg while the first is still running — that would
+      // collide on shared MEMFS filenames and corrupt output. zustand `set` is
+      // synchronous, so this holds even within the same tick before React commits.
+      if (useAppStore.getState().isProcessing) return;
       setIsProcessing(true);
       setPhase(p);
       setProcessMsg(message);
@@ -157,17 +163,36 @@ export function FrameEditorTool({
         const onExtractProgress = (f: ExtractedFrame[]) => {
           if (!append) setEditorFrames([...f], 'extracting');
         };
-        if (kind === 'gif') {
-          extracted = await extractFromGIF(filesToProcess[0], onExtractProgress);
-        } else if (kind === 'video') {
-          extracted = (
-            await extractFromVideo(filesToProcess[0], fps, startTime, endTime, onExtractProgress)
-          ).frames;
-        } else {
-          extracted = await extractFromImages(filesToProcess, fps);
+        try {
+          if (kind === 'gif') {
+            extracted = await extractFromGIF(filesToProcess[0], onExtractProgress);
+          } else if (kind === 'video') {
+            extracted = (
+              await extractFromVideo(filesToProcess[0], fps, startTime, endTime, onExtractProgress)
+            ).frames;
+          } else {
+            extracted = await extractFromImages(filesToProcess, fps);
+          }
+        } catch (e) {
+          // A failed non-append extract streams partial frames into the store
+          // (via onExtractProgress); the extractor revokes their blob URLs on the
+          // way out, which would leave the gallery full of broken images. Clear
+          // them so the user lands on the empty state, then re-throw so
+          // runProcessing surfaces the error.
+          if (!append) {
+            revokeFrameUrls(framesRef.current);
+            setFrames([]);
+          }
+          throw e;
         }
         setEditorFrames((prev) => append ? [...prev, ...extracted] : extracted, 'edited');
         const n = extracted.length;
+        if (n === 0) {
+          // A bad trim window or an empty/decode-only source can yield zero
+          // frames — that's not a success.
+          onPushToast('info', t('app.no_frames_extracted'));
+          return;
+        }
         onPushToast('success', append ? t('app.success_appended', { count: n, s: n === 1 ? '' : 's' }) : t('app.success_extracted', { count: n, s: n === 1 ? '' : 's' }));
       },
       t('app.error_extract'),
@@ -412,6 +437,7 @@ export function FrameEditorTool({
             {isProcessing && <ProcessingOverlay message={processMsg} />}
             <FrameGallery
               frames={frames}
+              isProcessing={isProcessing}
               onToggleSelection={toggleFrameSelection}
               onSelectAll={selectAll}
               onDeleteSelected={deleteSelected}

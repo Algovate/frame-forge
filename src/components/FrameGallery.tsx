@@ -8,6 +8,7 @@ import { SLIDER_STYLES } from './ui';
 
 interface FrameGalleryProps {
   frames: ExtractedFrame[];
+  isProcessing: boolean;
   onToggleSelection: (id: string) => void;
   onSelectAll: () => void;
   onDeleteSelected: () => void;
@@ -38,6 +39,7 @@ const SLIDER_STYLES_SM = {
 
 export function FrameGallery({
   frames,
+  isProcessing,
   onToggleSelection,
   onSelectAll,
   onDeleteSelected,
@@ -114,25 +116,31 @@ export function FrameGallery({
               <span className="text-[11px] font-mono w-6 mr-1">{threshold}%</span>
               
               <div className="flex items-center gap-1 border-l border-hairline pl-2">
-                <button 
-                  onClick={() => onFindLoops?.(threshold)} 
-                  className="flex items-center gap-1 text-primary hover:bg-primary/10 px-2 py-0.5 rounded transition-colors"
+                <button
+                  type="button"
+                  disabled={isProcessing}
+                  onClick={() => onFindLoops?.(threshold)}
+                  className="flex items-center gap-1 text-primary hover:bg-primary/10 px-2 py-0.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title={t('gallery.find_loop')}
                 >
                   <Repeat className="w-3.5 h-3.5" />
                   <span className="text-[11px] font-medium hidden xl:inline">{t('gallery.loop')}</span>
                 </button>
-                <button 
-                  onClick={() => onFindJumps?.(threshold)} 
-                  className="flex items-center gap-1 text-jump hover:bg-jump/10 px-2 py-0.5 rounded transition-colors"
+                <button
+                  type="button"
+                  disabled={isProcessing}
+                  onClick={() => onFindJumps?.(threshold)}
+                  className="flex items-center gap-1 text-jump hover:bg-jump/10 px-2 py-0.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title={t('gallery.find_jumps')}
                 >
                   <Zap className="w-3.5 h-3.5" />
                   <span className="text-[11px] font-medium hidden xl:inline">{t('gallery.jumps')}</span>
                 </button>
-                <button 
-                  onClick={() => onFindDuplicates?.(threshold)} 
-                  className="flex items-center gap-1 text-dedupe hover:bg-dedupe/10 px-2 py-0.5 rounded transition-colors"
+                <button
+                  type="button"
+                  disabled={isProcessing}
+                  onClick={() => onFindDuplicates?.(threshold)}
+                  className="flex items-center gap-1 text-dedupe hover:bg-dedupe/10 px-2 py-0.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title={t('gallery.find_duplicates')}
                 >
                   <Copy className="w-3.5 h-3.5" />
@@ -145,18 +153,18 @@ export function FrameGallery({
 
         {frames.length > 0 && (
           <div className="flex flex-wrap gap-1 items-center w-full">
-            <button type="button" onClick={() => onSelectAll()} className={ICON_CTRL} title={t('gallery.select_all')}>
+            <button type="button" disabled={isProcessing} onClick={() => onSelectAll()} className={ICON_CTRL} title={t('gallery.select_all')}>
               <CheckSquare className="w-4 h-4" />
             </button>
             {onSelectNone && (
-              <button type="button" onClick={() => onSelectNone()} className={ICON_CTRL} title={t('gallery.select_none')}>
+              <button type="button" disabled={isProcessing} onClick={() => onSelectNone()} className={ICON_CTRL} title={t('gallery.select_none')}>
                 <Square className="w-4 h-4" />
               </button>
             )}
-            <button type="button" onClick={() => onInvertSelection?.()} className={ICON_CTRL} title={t('gallery.invert_selection')}>
+            <button type="button" disabled={isProcessing} onClick={() => onInvertSelection?.()} className={ICON_CTRL} title={t('gallery.invert_selection')}>
               <Shuffle className="w-4 h-4" />
             </button>
-            <button type="button" onClick={() => onReverseFrames?.()} className={ICON_CTRL} title={t('gallery.reverse_frames')}>
+            <button type="button" disabled={isProcessing} onClick={() => onReverseFrames?.()} className={ICON_CTRL} title={t('gallery.reverse_frames')}>
               <Undo2 className="w-4 h-4" />
             </button>
             
@@ -165,7 +173,7 @@ export function FrameGallery({
                 type="button" 
                 onClick={() => lastClickedId && onRemovePreceding?.(lastClickedId)} 
                 className={ICON_CTRL}
-                disabled={!lastClickedId}
+                disabled={!lastClickedId || isProcessing}
                 title={t('gallery.remove_before')}
               >
                 <ArrowLeftToLine className="w-4 h-4" />
@@ -175,7 +183,7 @@ export function FrameGallery({
                 type="button" 
                 onClick={() => lastClickedId && onRemoveSubsequent?.(lastClickedId)} 
                 className={ICON_CTRL}
-                disabled={!lastClickedId}
+                disabled={!lastClickedId || isProcessing}
                 title={t('gallery.remove_after')}
               >
                 <ArrowRightToLine className="w-4 h-4" />
@@ -184,14 +192,14 @@ export function FrameGallery({
 
             <div className="flex items-center gap-1 sm:ml-1 border-l border-hairline pl-1.5">
               {onDuplicateSelected && (
-                <button type="button" onClick={onDuplicateSelected} className={`${ICON_CTRL} hover:bg-white/10`} title={t('gallery.duplicate_selected')}>
+                <button type="button" disabled={isProcessing} onClick={onDuplicateSelected} className={`${ICON_CTRL} hover:bg-white/10`} title={t('gallery.duplicate_selected')}>
                   <Copy className="w-4 h-4" aria-hidden="true" />
                 </button>
               )}
-              <button type="button" onClick={onDeleteSelected} className={`${ICON_CTRL} text-destructive hover:bg-destructive/10`} title={t('gallery.delete_selected')}>
+              <button type="button" disabled={isProcessing} onClick={onDeleteSelected} className={`${ICON_CTRL} text-destructive hover:bg-destructive/10`} title={t('gallery.delete_selected')}>
                 <Trash2 className="w-4 h-4" aria-hidden="true" />
               </button>
-              <button type="button" onClick={onDeleteUnselected} className={`${ICON_CTRL} text-destructive hover:bg-destructive/10`} title={t('gallery.delete_unselected')}>
+              <button type="button" disabled={isProcessing} onClick={onDeleteUnselected} className={`${ICON_CTRL} text-destructive hover:bg-destructive/10`} title={t('gallery.delete_unselected')}>
                 <Trash2 className="w-4 h-4 opacity-60" aria-hidden="true" />
               </button>
             </div>

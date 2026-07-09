@@ -17,6 +17,7 @@
     "error_extract": "无法从该文件提取帧",
     "success_appended": "已追加 {{count}} 帧",
     "success_extracted": "已提取 {{count}} 帧",
+    "no_frames_extracted": "未提取到任何帧 — 请检查裁剪范围或源文件",
     "finding_duplicates": "正在查找重复帧...",
     "success_dedupe": "已取消选中 {{count}} 个重复帧",
     "no_duplicates": "未发现重复帧",
