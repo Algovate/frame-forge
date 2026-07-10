@@ -40,11 +40,16 @@ export function useObjectUrlMap<T>(
   }, [items, getKey, getBlob]);
 
   useEffect(() => {
-    // Cleanup on unmount
+    // Cleanup on unmount. Clearing the ref after revoking matters for React
+    // StrictMode in dev: its setup→cleanup→setup remount reuses urlsRef, so
+    // without the reset the second setup would treat the just-revoked handles
+    // as still-valid and bind <img>/<video> previews to dead blob URLs
+    // (net::ERR_FILE_NOT_FOUND). The empty map forces a fresh recreation.
     return () => {
       for (const url of Object.values(urlsRef.current)) {
         URL.revokeObjectURL(url);
       }
+      urlsRef.current = {};
     };
   }, []);
 
