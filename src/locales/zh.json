@@ -18,6 +18,8 @@
     "success_appended": "已追加 {{count}} 帧",
     "success_extracted": "已提取 {{count}} 帧",
     "no_frames_extracted": "未提取到任何帧 — 请检查裁剪范围或源文件",
+    "error_dedupe": "帧分析失败",
+    "dismiss": "关闭通知",
     "finding_duplicates": "正在查找重复帧...",
     "success_dedupe": "已取消选中 {{count}} 个重复帧",
     "no_duplicates": "未发现重复帧",
@@ -60,6 +62,7 @@
     "matting_edge": "边缘",
     "matting_conserv": "保守",
     "matting_balance": "平衡",
+    "matting_aria": "抠图模式",
     "cleanup": "清理背景",
     "batch_cleanup": "批量清理背景",
     "output": "输出",
@@ -204,7 +207,13 @@
     "save_close": "保存并关闭",
     "hint_zoom": "Alt + 滚轮: 缩放",
     "hint_pan": "Alt 或 鼠标中键拖拽: 平移",
-    "fit": "适应窗口"
+    "fit": "适应窗口",
+    "open_color_picker": "打开取色器",
+    "hex_color": "十六进制颜色",
+    "editing_tools": "编辑工具",
+    "zoom_in": "放大",
+    "zoom_out": "缩小",
+    "tool_properties": "工具属性"
   },
   "splitter": {
     "title": "视频网格拆分器",

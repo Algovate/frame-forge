@@ -1,5 +1,5 @@
 import type { AssetLibraryItem } from '../types';
-import type { SplitVideoPart } from './ffmpegSpliter';
+import type { SplitVideoPart } from './ffmpegSplitter';
 import { randomId } from './media';
 
 export function assetFromSplitPart(part: SplitVideoPart): AssetLibraryItem {

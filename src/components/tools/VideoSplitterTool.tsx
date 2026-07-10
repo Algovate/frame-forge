@@ -21,9 +21,10 @@ import {
   splitVideoGridParts,
   preloadFFmpeg,
   getVideoDimensions,
+  getSplitGridGeometry,
   MAX_VIDEO_SIZE,
   type SplitVideoPart,
-} from '../../utils/ffmpegSpliter';
+} from '../../utils/ffmpegSplitter';
 import { downloadBlob } from '../../utils/exporters';
 import { ProcessingOverlay } from '../ProcessingOverlay';
 import { HEADING, SLIDER_STYLES } from '../ui';
@@ -211,12 +212,16 @@ export function VideoSplitterTool({
   let outputResolution = '';
   let gridValid = true;
   if (videoDimensions) {
-    const availW = Math.max(0, videoDimensions.width - padding.left - padding.right - gap * (cols - 1));
-    const availH = Math.max(0, videoDimensions.height - padding.top - padding.bottom - gap * (rows - 1));
-    const cellW = Math.floor(availW / cols);
-    const cellH = Math.floor(availH / rows);
-    outputResolution = `${cellW} × ${cellH}`;
-    gridValid = cellW > 0 && cellH > 0;
+    // Derive the preview dimensions from the same geometry the splitter uses so
+    // the overlay can't drift from the actual output. getSplitGridGeometry
+    // throws when padding/gap leaves no room for cells — that's the invalid case.
+    try {
+      const { cellWidth, cellHeight } = getSplitGridGeometry(videoDimensions, rows, cols, padding, gap);
+      outputResolution = `${cellWidth} × ${cellHeight}`;
+      gridValid = cellWidth > 0 && cellHeight > 0;
+    } catch {
+      gridValid = false;
+    }
   }
 
   // ── Empty state: ImportScreen-style centered dropzone ──────────────────────
