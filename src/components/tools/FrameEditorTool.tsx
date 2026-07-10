@@ -1,9 +1,15 @@
-import { useState, useCallback, useEffect, useRef, type SetStateAction } from 'react';
+import { useState, useCallback, useEffect, useRef, Suspense, lazy, type SetStateAction } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ImportScreen } from '../ImportScreen';
 import { RightSidebar } from '../RightSidebar';
 import { FrameGallery } from '../FrameGallery';
-import { FrameEditorModal } from '../FrameEditorModal';
+// Lazy-load the per-frame editor: it's a large component (paint tools, color
+// picker, cropping, onion-skin, …) only mounted when a frame is opened, and
+// pulls in react-image-crop / react-colorful. Keeping it out of the initial
+// bundle speeds up first paint for users who never open the editor.
+const FrameEditorModal = lazy(() =>
+  import('../FrameEditorModal').then((m) => ({ default: m.FrameEditorModal })),
+);
 import type { ToastType } from '../Toast';
 import type { AssetLibraryItem, ExtractedFrame, MattingMode, ProcessingPhase } from '../../types';
 import { extractFromGIF, extractFromVideo, extractFromImages } from '../../utils/extractors';
@@ -495,15 +501,17 @@ export function FrameEditorTool({
       )}
 
       {editingFrameId && (
-        <FrameEditorModal
-          frame={editingFrame}
-          previousFrame={previousEditingFrame}
-          nextFrame={nextEditingFrame}
-          onClose={() => setEditingFrameId(null)}
-          onSave={handleSaveEdit}
-          onBatchCrop={handleBatchCrop}
-          onSplitGrid={handleSplitGridFrame}
-        />
+        <Suspense fallback={null}>
+          <FrameEditorModal
+            frame={editingFrame}
+            previousFrame={previousEditingFrame}
+            nextFrame={nextEditingFrame}
+            onClose={() => setEditingFrameId(null)}
+            onSave={handleSaveEdit}
+            onBatchCrop={handleBatchCrop}
+            onSplitGrid={handleSplitGridFrame}
+          />
+        </Suspense>
       )}
     </>
   );
