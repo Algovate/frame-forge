@@ -51,5 +51,8 @@ coverage
 .temp
 .tmp
 
+# Local agent/tooling artifacts
+.superpowers/
+
 # Output
 output/
