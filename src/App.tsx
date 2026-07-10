@@ -19,9 +19,9 @@ function App() {
   const { t } = useTranslation();
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
-  const pushToast = useCallback((type: ToastType, message: string) => {
+  const pushToast = useCallback((type: ToastType, message: string, action?: ToastItem['action']) => {
     const id = Date.now() + Math.random();
-    setToasts((prev) => [...prev.slice(-2), { id, type, message }]); // cap at 3
+    setToasts((prev) => [...prev.slice(-2), { id, type, message, action }]); // cap at 3
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
   }, []);
 
@@ -40,16 +40,16 @@ function App() {
   };
 
   return (
-    <div className="min-h-dvh flex flex-col overflow-x-hidden px-4 py-4 text-foreground relative sm:px-6 lg:h-screen lg:overflow-hidden lg:px-8">
+    <div className="min-h-dvh flex flex-col overflow-x-hidden bg-background px-3 py-3 text-foreground relative sm:px-5 lg:h-screen lg:overflow-hidden lg:px-6">
       <AmbientBackground />
 
-      <div className="max-w-[1600px] w-full mx-auto flex-none z-10 relative">
+      <div className="max-w-[1600px] w-full mx-auto flex-none z-10 relative border-b border-hairline pb-3">
         <Header />
       </div>
 
-      <main className="flex-1 min-h-0 max-w-[1600px] w-full mx-auto relative flex flex-col mt-4 gap-4 lg:flex-row">
+      <main className="flex-1 min-h-0 max-w-[1600px] w-full mx-auto relative flex flex-col mt-3 gap-3 lg:flex-row">
         {isAssetPanelOpen && (
-          <aside className="w-full shrink-0 custom-scrollbar lg:w-64 lg:h-full lg:overflow-y-auto lg:pb-6">
+          <aside className="w-full shrink-0 custom-scrollbar lg:w-64 lg:h-full lg:overflow-y-auto lg:pb-3">
             <AssetLibraryPanel
               assets={assetLibrary}
               onUseAsset={(asset) => {

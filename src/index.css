@@ -1,63 +1,63 @@
 @import "tailwindcss";
 
-/* ── Pro Indigo design tokens ───────────────────────────────────────────────
+/* ── Neutral Modern token bindings ─────────────────────────────────────────
    @theme is the single source of truth. Every --color-* / --font-* / --radius-*
    key auto-generates utilities (bg-*, text-*, border-*, ring-*, rounded-*) with
    /opacity modifier support. Semantic colors are named by intent (dedupe/matte)
    so they don't clobber Tailwind's built-in violet/sky scales. */
 @theme {
   /* Surfaces */
-  --color-background: #0a0b12;
-  --color-surface: #12131c;
-  --color-surface-hover: #1a1b27;
+  --color-background: #fafafa;
+  --color-surface: #ffffff;
+  --color-surface-hover: #f4f6f8;
 
   /* Hairlines */
-  --color-hairline: rgba(255, 255, 255, 0.08);
-  --color-hairline-strong: rgba(255, 255, 255, 0.12);
+  --color-hairline: #e5e5e5;
+  --color-hairline-strong: #d4d4d4;
 
   /* Text */
-  --color-foreground: #f8fafc;
-  --color-muted: #94a3b8;
+  --color-foreground: #111111;
+  --color-muted: #6b6b6b;
 
-  /* Accent (indigo → violet) */
-  --color-primary: #6366f1;
-  --color-primary-hover: #818cf8;
+  /* Accent */
+  --color-primary: #2f6feb;
+  --color-primary-hover: #1f5cc7;
 
   /* Semantic */
-  --color-dedupe: #8b5cf6;      /* violet — Smart Deduplicate */
-  --color-matte: #38bdf8;        /* sky    — AI Batch Matting */
-  --color-jump: #f59e0b;         /* amber  — Find Jump Frames */
-  --color-destructive: #ef4444;
+  --color-dedupe: #2f6feb;
+  --color-matte: #17a34a;
+  --color-jump: #eab308;
+  --color-destructive: #dc2626;
 
   /* Typography */
-  --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
   /* Radii */
-  --radius-card: 16px;
-  --radius-control: 12px;
+  --radius-card: 12px;
+  --radius-control: 8px;
   --radius-pill: 9999px;
 
   /* Elevation (generates shadow-card / shadow-pop utilities) */
-  --shadow-card: 0 1px 0 0 rgba(255, 255, 255, 0.04) inset, 0 8px 24px -12px rgba(0, 0, 0, 0.6);
-  --shadow-pop: 0 12px 32px -8px rgba(0, 0, 0, 0.7), 0 0 0 1px var(--glass-border);
+  --shadow-card: none;
+  --shadow-pop: 0 2px 8px color-mix(in oklab, var(--color-foreground), transparent 92%);
 }
 
 /* ── Non-utility values (used inside custom classes / arbitrary values) ──── */
 :root {
-  /* Glass */
-  --glass-bg: rgba(255, 255, 255, 0.04);
-  --glass-bg-hover: rgba(255, 255, 255, 0.06);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-highlight: rgba(255, 255, 255, 0.06);
+  /* Surface */
+  --glass-bg: var(--color-surface);
+  --glass-bg-hover: var(--color-surface-hover);
+  --glass-border: var(--color-hairline);
+  --glass-highlight: transparent;
 
   /* Accent glow */
-  --accent-glow: rgba(99, 102, 241, 0.25);
-  --accent-glow-strong: rgba(99, 102, 241, 0.45);
+  --accent-glow: color-mix(in oklab, var(--color-primary), transparent 78%);
+  --accent-glow-strong: color-mix(in oklab, var(--color-primary), transparent 62%);
 
   /* Ambient background blobs */
-  --ambient-indigo: rgba(99, 102, 241, 0.18);
-  --ambient-violet: rgba(139, 92, 246, 0.16);
+  --ambient-indigo: color-mix(in oklab, var(--color-primary), transparent 96%);
+  --ambient-violet: transparent;
 }
 
 body {
@@ -74,12 +74,11 @@ body {
 /* ── Refined glass surface ─────────────────────────────────────────────────── */
 .glass-panel {
   background: var(--glass-bg);
-  backdrop-filter: blur(12px) saturate(140%);
-  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   border: 1px solid var(--glass-border);
   box-shadow: var(--shadow-card);
-  /* subtle top inner highlight */
-  background-image: linear-gradient(to bottom, var(--glass-highlight), transparent 40%);
+  background-image: none;
 }
 
 /* ── Global focus ring (keyboard only) ───────────────────────────────────────
@@ -102,7 +101,7 @@ button:not(:disabled) {
 .ambient-blob {
   position: absolute;
   border-radius: 9999px;
-  filter: blur(120px);
+  filter: blur(140px);
   will-change: transform;
 }
 .ambient-blob--indigo {
@@ -110,8 +109,7 @@ button:not(:disabled) {
   animation: blob-drift-1 26s ease-in-out infinite alternate;
 }
 .ambient-blob--violet {
-  background: radial-gradient(circle at center, var(--ambient-violet), transparent 70%);
-  animation: blob-drift-2 32s ease-in-out infinite alternate;
+  display: none;
 }
 @keyframes blob-drift-1 {
   from { transform: translate3d(-8%, -6%, 0) scale(1); }
@@ -135,10 +133,10 @@ button:not(:disabled) {
 .frame-checker {
   background-color: var(--color-background);
   background-image:
-    linear-gradient(45deg, rgba(255, 255, 255, 0.04) 25%, transparent 25%),
-    linear-gradient(-45deg, rgba(255, 255, 255, 0.04) 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, 0.04) 75%),
-    linear-gradient(-45deg, transparent 75%, rgba(255, 255, 255, 0.04) 75%);
+    linear-gradient(45deg, color-mix(in srgb, var(--color-foreground), transparent 96%) 25%, transparent 25%),
+    linear-gradient(-45deg, color-mix(in srgb, var(--color-foreground), transparent 96%) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, color-mix(in srgb, var(--color-foreground), transparent 96%) 75%),
+    linear-gradient(-45deg, transparent 75%, color-mix(in srgb, var(--color-foreground), transparent 96%) 75%);
   background-size: 16px 16px;
   background-position: 0 0, 0 8px, 8px -8px, -8px 0;
 }

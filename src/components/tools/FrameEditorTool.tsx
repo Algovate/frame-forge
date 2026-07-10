@@ -4,7 +4,7 @@ import { ImportScreen } from '../ImportScreen';
 import { RightSidebar } from '../RightSidebar';
 import { FrameGallery } from '../FrameGallery';
 
-import type { ToastType } from '../Toast';
+import type { ToastItem, ToastType } from '../Toast';
 import type { ProjectAsset, ExtractedFrame, MattingMode, ProcessingPhase } from '../../types';
 import { extractFromGIF, extractFromVideo, extractFromImages } from '../../utils/extractors';
 import { findDuplicateFrames, findLoopFrames, findJumpFrames, batchRemoveBackground } from '../../utils/processors';
@@ -16,14 +16,57 @@ import { useAppStore } from '../../store';
 import { assetFromFile } from '../../utils/assets';
 
 interface FrameEditorToolProps {
-  onPushToast: (type: ToastType, message: string) => void;
+  onPushToast: (type: ToastType, message: string, action?: ToastItem['action']) => void;
+}
+
+type WorkflowStage = 'source' | 'curate';
+
+function WorkflowProgress({ activeStage }: { activeStage: WorkflowStage }) {
+  const { t } = useTranslation();
+  const stages = [
+    { id: 'source', number: '01', label: t('workflow.source') },
+    { id: 'curate', number: '02', label: t('workflow.curate') },
+    { id: 'refine', number: '03', label: t('workflow.refine') },
+    { id: 'export', number: '04', label: t('workflow.export') },
+  ] as const;
+  const activeIndex = stages.findIndex((stage) => stage.id === activeStage);
+
+  return (
+    <nav aria-label={t('workflow.label')} className="mb-4 border-b border-hairline pb-3">
+      <ol className="grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-4">
+        {stages.map((stage, index) => {
+          const isCurrent = stage.id === activeStage;
+          const isComplete = index < activeIndex;
+          return (
+            <li key={stage.id} className="flex min-w-0 items-center gap-2">
+              <span
+                aria-hidden="true"
+                className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border text-[10px] font-mono font-semibold ${
+                  isCurrent
+                    ? 'border-primary bg-primary text-white'
+                    : isComplete
+                      ? 'border-primary/40 bg-primary/10 text-primary'
+                      : 'border-hairline bg-surface text-muted'
+                }`}
+              >
+                {isComplete ? '✓' : stage.number}
+              </span>
+              <span className={`truncate text-xs font-medium ${isCurrent ? 'text-foreground' : 'text-muted'}`}>
+                {stage.label}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
 }
 
 export function FrameEditorTool({
   onPushToast,
 }: FrameEditorToolProps) {
   const { t } = useTranslation();
-  const { frames, setFrames, sourceFiles, setSourceFiles, activeAssetId, setActiveAssetId, setAppendFramesFromFiles, setLoadAssetIntoFrameEditor, isProcessing, setIsProcessing, setAssetLibrary, setEditingFrameId, setEditingAssetId, setActiveTool } = useAppStore();
+  const { frames, setFrames, sourceFiles, setSourceFiles, activeAssetId, setActiveAssetId, setAppendFramesFromFiles, setLoadAssetIntoFrameEditor, isProcessing, setIsProcessing, setAssetLibrary, setEditingFrameId, setEditingAssetId, setActiveTool, setIsAssetPanelOpen } = useAppStore();
   const framesRef = useRef(frames);
   framesRef.current = frames;
   const [phase, setPhase] = useState<ProcessingPhase>('idle');
@@ -41,6 +84,15 @@ export function FrameEditorTool({
   // Sprite Sheet Settings
   const [spriteCols, setSpriteCols] = useState<number>(0);
   const [spritePadding, setSpritePadding] = useState<number>(0);
+
+  const saveExportToLibrary = useCallback((result: { filename: string; blob: Blob }, label: string) => {
+    const file = new File([result.blob], result.filename, { type: result.blob.type || 'image/png' });
+    setAssetLibrary((prev) => [...prev, assetFromFile(file)]);
+    onPushToast('success', t('app.success_export_saved', { label }), {
+      label: t('app.view_project_assets'),
+      onClick: () => setIsAssetPanelOpen(true),
+    });
+  }, [onPushToast, setAssetLibrary, setIsAssetPanelOpen, t]);
 
   // Patch the active asset, skipping the allocation when nothing actually
   // changed — frame mutations route through setEditorFrames and fire this
@@ -281,6 +333,7 @@ export function FrameEditorTool({
       const result = await exportGIF(frames, gifDelay, exportWidth, exportHeight);
       if (result) {
         onPushToast('success', t('app.success_gif', { size: Math.round(result.sizeBytes / 1024) }));
+        saveExportToLibrary(result, t('sidebar.export_wechat_gif'));
       }
     }, t('app.error_gif'));
   };
@@ -294,6 +347,7 @@ export function FrameEditorTool({
       const result = await exportPNG(frames, exportWidth, exportHeight);
       if (result) {
         onPushToast('success', t('app.success_png', { size: Math.round(result.sizeBytes / 1024) }));
+        saveExportToLibrary(result, t('sidebar.export_wechat_png'));
       }
     }, t('app.error_png'));
   };
@@ -303,8 +357,11 @@ export function FrameEditorTool({
       'exporting',
       t('app.packing_sprite'),
       async () => {
-        await exportSpriteSheet(frames, spriteCols, spritePadding, exportWidth, exportHeight);
-        onPushToast('success', t('app.success_sprite'));
+        const result = await exportSpriteSheet(frames, spriteCols, spritePadding, exportWidth, exportHeight);
+        if (result) {
+          onPushToast('success', t('app.success_sprite'));
+          saveExportToLibrary(result, t('sidebar.sprite'));
+        }
       },
       t('app.error_sprite'),
     );
@@ -375,6 +432,7 @@ export function FrameEditorTool({
         <div className="flex-1 min-h-0 w-full">
           <section className="flex flex-col min-h-0 h-full justify-center">
             <div className="w-full max-w-xl mx-auto flex flex-col mt-4 sm:mt-12 overflow-visible">
+              <WorkflowProgress activeStage="source" />
               <ImportScreen
                 sourceFiles={sourceFiles}
                 isProcessing={isProcessing}
@@ -393,7 +451,9 @@ export function FrameEditorTool({
           </section>
         </div>
       ) : (
-        <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-9 gap-4 w-full">
+        <div className="flex-1 min-h-0 w-full">
+          <WorkflowProgress activeStage="curate" />
+          <div className="grid min-h-0 grid-cols-1 gap-4 lg:grid-cols-9">
           <section className="lg:col-span-6 flex flex-col relative min-h-0">
             {isProcessing && <ProcessingOverlay message={processMsg} />}
             <FrameGallery
@@ -445,6 +505,7 @@ export function FrameEditorTool({
             onExportPNG={handleExportPNG}
             onExportSpriteSheet={handleExportSpriteSheet}
           />
+          </div>
         </div>
       )}
 

@@ -16,6 +16,13 @@
     "assets": "项目素材",
     "tools": "工具"
   },
+  "workflow": {
+    "label": "表情制作流程",
+    "source": "导入素材",
+    "curate": "整理帧",
+    "refine": "精修细节",
+    "export": "导出交付"
+  },
   "app": {
     "error_batch_static": "批量{{verb}}仅支持静态图片。",
     "error_unsupported": "不支持的文件格式。请使用图片、视频或 GIF。",
@@ -51,6 +58,8 @@
     "error_png": "PNG 导出失败",
     "packing_sprite": "正在打包精灵图...",
     "success_sprite": "精灵图已准备就绪",
+    "success_export_saved": "{{label}} 已加入项目素材，可继续编辑或复用",
+    "view_project_assets": "查看素材",
     "error_sprite": "精灵图导出失败",
     "success_duplicate": "已复制 {{count}} 帧",
     "success_clips_loaded": "已加载 {{count}} 个表情片段",
@@ -72,12 +81,18 @@
     "batch_cleanup": "批量清理背景",
     "output": "输出",
     "presets": "预设",
+    "preset_wechat_short": "微信",
+    "preset_discord_short": "Discord",
+    "preset_original_short": "原始",
     "preset_wechat": "微信 (240x240, 10fps)",
     "preset_discord": "Discord (128x128, 20fps)",
     "preset_original": "原始尺寸",
     "width": "宽度",
     "height": "高度",
     "export": "导出",
+    "ready_to_export": "已就绪：选择一种格式即可导出",
+    "export_processing": "正在处理中，完成后即可导出",
+    "export_needs_selection": "请至少选择一帧，再继续导出",
     "export_wechat_gif": "导出微信 GIF",
     "hint_gif": "选中的帧和延迟",
     "export_wechat_png": "导出微信 PNG",
@@ -119,6 +134,10 @@
   "gallery": {
     "title": "表情帧",
     "similarity": "相似度:",
+    "detect": "智能检测",
+    "select": "选择",
+    "modify": "批量修改",
+    "delete": "删除",
     "loop": "循环",
     "find_loop": "查找循环帧",
     "jumps": "跳跃",
@@ -141,7 +160,9 @@
     "frame_not_selected": "第 {{number}} 帧，未选中",
     "edit_frame": "编辑该帧",
     "selection_controls": "选择控制",
-    "selected_actions": "已选帧操作"
+    "selected_actions": "已选帧操作",
+    "detection_controls": "智能检测控制",
+    "delete_actions": "删除操作"
   },
   "clips": {
     "title": "表情队列",

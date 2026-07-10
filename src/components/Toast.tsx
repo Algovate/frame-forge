@@ -6,6 +6,7 @@ export interface ToastItem {
   id: number;
   type: ToastType;
   message: string;
+  action?: { label: string; onClick: () => void };
 }
 
 const ICONS: Record<ToastType, typeof CheckCircle2> = {
@@ -52,6 +53,15 @@ function Toast({
     >
       <Icon className={`w-5 h-5 mt-0.5 shrink-0 ${TINT[toast.type]}`} aria-hidden="true" />
       <p className="text-sm text-foreground leading-snug flex-1">{toast.message}</p>
+      {toast.action && (
+        <button
+          type="button"
+          onClick={toast.action.onClick}
+          className="shrink-0 min-h-8 rounded-sm px-2 text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
+        >
+          {toast.action.label}
+        </button>
+      )}
       <button
         type="button"
         onClick={() => onDismiss(toast.id)}

@@ -28,7 +28,10 @@ interface FrameGalleryProps {
 }
 
 const ICON_CTRL =
-  'w-11 h-11 flex items-center justify-center rounded-control text-muted hover:text-foreground hover:bg-white/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
+  'w-11 h-11 flex items-center justify-center rounded-control text-muted hover:text-foreground hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40';
+
+const TOOL_GROUP = 'flex items-center gap-1 rounded-control border border-hairline bg-surface px-1 py-1';
+const TOOL_GROUP_LABEL = 'hidden 2xl:block px-2 text-[10px] font-mono uppercase tracking-[0.08em] text-muted whitespace-nowrap';
 
 /** Compact-slider variant: same theme as SLIDER_STYLES with a smaller handle
  *  for the tight similarity-threshold control. */
@@ -95,7 +98,7 @@ export function FrameGallery({
       <div className="flex flex-wrap justify-between items-center gap-y-3 gap-x-2 mb-4">
         <div className="flex flex-wrap items-center justify-between w-full xl:w-auto xl:flex-1 gap-2">
           <h2 className="text-lg font-semibold flex items-center gap-2">
-            <ImageIcon className="w-5 h-5 text-primary" aria-hidden="true" /> {t('gallery.title')}
+            <ImageIcon className="w-5 h-5 text-primary" aria-hidden="true" /> {t('workflow.curate')}
             {frames.length > 0 && (
               <span className="ml-1 font-mono text-xs text-muted tabular-nums">
                 {selectedCount}
@@ -106,8 +109,9 @@ export function FrameGallery({
           </h2>
 
           {frames.length > 0 && (
-            <div className="flex items-center gap-2 px-3 py-1 bg-surface-hover rounded-control border border-hairline xl:ml-auto">
-              <span className="text-[11px] text-muted whitespace-nowrap">{t('gallery.similarity')}</span>
+            <div className={`${TOOL_GROUP} xl:ml-auto`} aria-label={t('gallery.detection_controls')}>
+              <span className={TOOL_GROUP_LABEL}>{t('gallery.detect')}</span>
+              <span className="pl-2 text-[11px] text-muted whitespace-nowrap">{t('gallery.similarity')}</span>
               <div className="w-16 sm:w-24">
                 <Slider min={1} max={100} value={threshold} onChange={(v) => setThreshold(v as number)}
                   styles={SLIDER_STYLES_SM}
@@ -155,20 +159,25 @@ export function FrameGallery({
         </div>
 
         {frames.length > 0 && (
-          <div className="flex flex-wrap gap-1 items-center w-full" aria-label={t('gallery.selection_controls', 'Selection controls')}>
-            <button type="button" disabled={isProcessing} onClick={() => onSelectAll()} aria-label={t('gallery.select_all')} className={ICON_CTRL} title={t('gallery.select_all')}>
-              <CheckSquare className="w-4 h-4" />
-            </button>
-            {onSelectNone && (
-              <button type="button" disabled={isProcessing} onClick={() => onSelectNone()} aria-label={t('gallery.select_none')} className={ICON_CTRL} title={t('gallery.select_none')}>
-                <Square className="w-4 h-4" />
+          <div className="flex flex-wrap gap-2 items-center w-full" aria-label={t('gallery.selection_controls')}>
+            <div className={TOOL_GROUP}>
+              <span className={TOOL_GROUP_LABEL}>{t('gallery.select')}</span>
+              <button type="button" disabled={isProcessing} onClick={() => onSelectAll()} aria-label={t('gallery.select_all')} className={ICON_CTRL} title={t('gallery.select_all')}>
+                <CheckSquare className="w-4 h-4" />
               </button>
-            )}
-            <button type="button" disabled={isProcessing} onClick={() => onInvertSelection?.()} aria-label={t('gallery.invert_selection')} className={ICON_CTRL} title={t('gallery.invert_selection')}>
-              <Shuffle className="w-4 h-4" />
-            </button>
+              {onSelectNone && (
+                <button type="button" disabled={isProcessing} onClick={() => onSelectNone()} aria-label={t('gallery.select_none')} className={ICON_CTRL} title={t('gallery.select_none')}>
+                  <Square className="w-4 h-4" />
+                </button>
+              )}
+              <button type="button" disabled={isProcessing} onClick={() => onInvertSelection?.()} aria-label={t('gallery.invert_selection')} className={ICON_CTRL} title={t('gallery.invert_selection')}>
+                <Shuffle className="w-4 h-4" />
+              </button>
+            </div>
             {selectedCount > 0 && (
-              <div className="flex items-center gap-1 border-l border-hairline pl-1.5 ml-0.5" aria-label={t('gallery.selected_actions', 'Selected frame actions')}>
+              <>
+              <div className={TOOL_GROUP} aria-label={t('gallery.selected_actions')}>
+                <span className={TOOL_GROUP_LABEL}>{t('gallery.modify')}</span>
                 <button type="button" disabled={isProcessing} onClick={() => onReverseFrames?.()} aria-label={t('gallery.reverse_frames')} className={ICON_CTRL} title={t('gallery.reverse_frames')}>
                   <Undo2 className="w-4 h-4" />
                 </button>
@@ -179,10 +188,13 @@ export function FrameGallery({
                   <ArrowRightToLine className="w-4 h-4" />
                 </button>
                 {onDuplicateSelected && (
-                  <button type="button" disabled={isProcessing} onClick={onDuplicateSelected} aria-label={t('gallery.duplicate_selected')} className={`${ICON_CTRL} hover:bg-white/10`} title={t('gallery.duplicate_selected')}>
+                  <button type="button" disabled={isProcessing} onClick={onDuplicateSelected} aria-label={t('gallery.duplicate_selected')} className={ICON_CTRL} title={t('gallery.duplicate_selected')}>
                     <Copy className="w-4 h-4" aria-hidden="true" />
                   </button>
                 )}
+              </div>
+              <div className={TOOL_GROUP} aria-label={t('gallery.delete_actions')}>
+                <span className={TOOL_GROUP_LABEL}>{t('gallery.delete')}</span>
                 <button type="button" disabled={isProcessing} onClick={onDeleteSelected} aria-label={t('gallery.delete_selected')} className={`${ICON_CTRL} text-destructive hover:bg-destructive/10`} title={t('gallery.delete_selected')}>
                   <Trash2 className="w-4 h-4" aria-hidden="true" />
                 </button>
@@ -190,6 +202,7 @@ export function FrameGallery({
                   <Trash2 className="w-4 h-4 opacity-60" aria-hidden="true" />
                 </button>
               </div>
+              </>
             )}
           </div>
         )}

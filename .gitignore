@@ -53,6 +53,10 @@ coverage
 
 # Local agent/tooling artifacts
 .superpowers/
+.od-skills/
+
+# Local review/critique output
+critique.json
 
 # Output
 output/

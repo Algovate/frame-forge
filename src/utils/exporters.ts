@@ -7,6 +7,7 @@ import { getFFmpeg, fileDataToBlob } from './ffmpegSplitter';
 export interface ExportResult {
   filename: string;
   sizeBytes: number;
+  blob: Blob;
 }
 
 export const downloadBlob = (blob: Blob, filename: string) => {
@@ -104,7 +105,7 @@ export const exportGIF = async (
 
     const filename = 'wechat-sticker.gif';
     downloadBlob(blob, filename);
-    result = { filename, sizeBytes: blob.size };
+    result = { filename, sizeBytes: blob.size, blob };
   } finally {
     // Always purge this run's files from the shared singleton MEMFS — a thrown
     // exec/read would otherwise leave stale frame_*.png that the next export or
@@ -124,9 +125,9 @@ export const exportSpriteSheet = async (
   pad: number,
   w: number,
   h: number
-) => {
+) : Promise<ExportResult | null> => {
   const selectedFrames = getSelected(frames);
-  if (selectedFrames.length === 0) return;
+  if (selectedFrames.length === 0) return null;
 
   const maybeResize = (dataUrl: string) => (w && h ? resizeImage(dataUrl, w, h) : dataUrl);
 
@@ -155,14 +156,15 @@ export const exportSpriteSheet = async (
     ctx.drawImage(images[i], col * (cellW + pad), row * (cellH + pad));
   }
 
-  return new Promise<void>((resolve, reject) => {
+  return new Promise<ExportResult>((resolve, reject) => {
     canvas.toBlob((blob) => {
       if (!blob) {
         reject(new Error('Could not generate sprite sheet'));
         return;
       }
-      downloadBlob(blob, 'spritesheet.png');
-      resolve();
+      const filename = 'spritesheet.png';
+      downloadBlob(blob, filename);
+      resolve({ filename, sizeBytes: blob.size, blob });
     });
   });
 };
@@ -183,5 +185,5 @@ export const exportPNG = async (
   const filename = 'wechat-sticker.png';
   downloadBlob(blob, filename);
 
-  return { filename, sizeBytes: blob.size };
+  return { filename, sizeBytes: blob.size, blob };
 };
