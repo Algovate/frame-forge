@@ -254,7 +254,7 @@ export function FrameGallery({
                     e.stopPropagation();
                     onEditFrame?.(frame.id);
                   }}
-                  aria-label="Edit frame"
+                  aria-label={t('gallery.edit_frame')}
                   className={`absolute bottom-1.5 right-1.5 p-1.5 rounded-md bg-black/60 text-white transition-opacity hover:bg-black/80 backdrop-blur-sm z-10 ${
                     frame.selected
                       ? 'opacity-100'

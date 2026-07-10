@@ -5,7 +5,7 @@ import { AmbientBackground } from './components/AmbientBackground';
 import { FrameEditorTool } from './components/tools/FrameEditorTool';
 import { VideoSplitterTool } from './components/tools/VideoSplitterTool';
 import { AssetLibraryPanel } from './components/sidebar/AssetLibraryPanel';
-import type { SplitVideoPart } from './utils/ffmpegSpliter';
+import type { SplitVideoPart } from './utils/ffmpegSplitter';
 import { assetFromSplitPart } from './utils/assets';
 import type { AssetLibraryItem } from './types';
 import { useAppStore } from './store';

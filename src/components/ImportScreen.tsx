@@ -187,7 +187,7 @@ export function ImportScreen(props: ImportScreenProps) {
                         onLoadedMetadata={handleVideoLoadedMetadata}
                       />
                     ) : (
-                      <img src={previewUrl} alt="Preview" className="max-w-full max-h-full object-contain rounded-md" />
+                      <img src={previewUrl} alt={t('sidebar.preview')} className="max-w-full max-h-full object-contain rounded-md" />
                     )}
                   </div>
                   <div className="absolute inset-1 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-md flex flex-col items-center justify-center backdrop-blur-[2px]">

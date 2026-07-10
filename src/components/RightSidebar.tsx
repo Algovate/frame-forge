@@ -93,7 +93,7 @@ export function RightSidebar(props: RightSidebarProps) {
           <Wand2 className="w-4 h-4 text-dedupe" aria-hidden="true" /> {t('sidebar.prepare')}
         </h2>
         <div className="space-y-2">
-          <div className="grid grid-cols-3 gap-1.5" role="group" aria-label="Matting mode">
+          <div className="grid grid-cols-3 gap-1.5" role="group" aria-label={t('sidebar.matting_aria')}>
             {MATTING_MODES.map((mode) => (
               <button
                 key={mode.id}

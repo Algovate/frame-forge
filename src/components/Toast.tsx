@@ -1,4 +1,5 @@
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export type ToastType = 'success' | 'error' | 'info';
 
@@ -44,6 +45,7 @@ function Toast({
   onDismiss: (id: number) => void;
 }) {
   const Icon = ICONS[toast.type];
+  const { t } = useTranslation();
   return (
     <div
       role={toast.type === 'error' ? 'alert' : 'status'}
@@ -55,7 +57,7 @@ function Toast({
       <button
         type="button"
         onClick={() => onDismiss(toast.id)}
-        aria-label="Dismiss notification"
+        aria-label={t('app.dismiss')}
         className="shrink-0 grid place-items-center w-8 h-8 rounded-sm text-muted hover:text-foreground hover:bg-white/5 transition-colors"
       >
         <X className="w-4 h-4" />

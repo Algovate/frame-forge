@@ -871,7 +871,7 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
             <span className="text-[11px] font-semibold uppercase tracking-wider text-muted/70 shrink-0">{t('editor.color')}</span>
             <button
               type="button"
-              aria-label="Open color picker"
+              aria-label={t('editor.open_color_picker')}
               aria-haspopup="true"
               aria-expanded={showColorPicker}
               onClick={() => setShowColorPicker((v) => !v)}
@@ -882,7 +882,7 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
               type="text"
               value={color}
               onChange={(e) => setColor(e.target.value)}
-              aria-label="Hex color"
+              aria-label={t('editor.hex_color')}
               className="w-24 px-2 py-1 bg-surface border border-hairline rounded-control text-sm font-mono text-foreground focus:border-primary transition-colors"
             />
 
@@ -1139,7 +1139,7 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
           {/* Tool rail */}
           <nav
             ref={railRef}
-            aria-label="Editing tools"
+            aria-label={t('editor.editing_tools')}
             className="w-14 shrink-0 flex flex-col items-center gap-1 py-3 border-r border-hairline bg-surface/30"
           >
             {DRAW_TOOLS.map((t_item) => (
@@ -1326,7 +1326,7 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
                   const rect = containerRef.current?.getBoundingClientRect();
                   zoomFromClientPoint(rect ? rect.left + rect.width / 2 : 0, rect ? rect.top + rect.height / 2 : 0, 0.9);
                 }}
-                aria-label="Zoom out"
+                aria-label={t('editor.zoom_out')}
                 className="grid place-items-center w-8 h-8 rounded-control text-muted hover:text-foreground hover:bg-white/5 transition-colors"
               >
                 <ZoomOut className="w-4 h-4" aria-hidden="true" />
@@ -1338,15 +1338,15 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
                   const rect = containerRef.current?.getBoundingClientRect();
                   zoomFromClientPoint(rect ? rect.left + rect.width / 2 : 0, rect ? rect.top + rect.height / 2 : 0, 1.1);
                 }}
-                aria-label="Zoom in"
+                aria-label={t('editor.zoom_in')}
                 className="grid place-items-center w-8 h-8 rounded-control text-muted hover:text-foreground hover:bg-white/5 transition-colors"
               >
                 <ZoomIn className="w-4 h-4" aria-hidden="true" />
               </button>
-              <button type="button" onClick={fitToView} aria-label="Fit canvas to view" className="px-2 h-8 rounded-control text-xs font-medium text-muted hover:text-foreground hover:bg-white/5 transition-colors">
+              <button type="button" onClick={fitToView} className="px-2 h-8 rounded-control text-xs font-medium text-muted hover:text-foreground hover:bg-white/5 transition-colors">
                 {t('editor.fit')}
               </button>
-              <button type="button" onClick={resetView} aria-label="Reset zoom to 100%" className="px-2 h-8 rounded-control text-xs font-medium text-muted hover:text-foreground hover:bg-white/5 transition-colors">
+              <button type="button" onClick={resetView} className="px-2 h-8 rounded-control text-xs font-medium text-muted hover:text-foreground hover:bg-white/5 transition-colors">
                 {t('editor.ratio_1_1')}
               </button>
             </div>
@@ -1354,7 +1354,7 @@ export function FrameEditorModal({ frame, previousFrame, nextFrame, onClose, onS
 
           {/* Properties panel (context-aware) */}
           <aside
-            aria-label="Tool properties"
+            aria-label={t('editor.tool_properties')}
             className="hidden sm:flex flex-col w-56 md:w-60 shrink-0 border-l border-hairline bg-surface/30 p-4 overflow-y-auto custom-scrollbar"
           >
             <h3 className="text-sm font-semibold mb-4">{t('editor.properties')}</h3>

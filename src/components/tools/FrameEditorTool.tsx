@@ -206,7 +206,7 @@ export function FrameEditorTool({
       setEditorFrames(next);
       const removed = before - next.filter((f) => f.selected).length;
       onPushToast('info', removed > 0 ? t('app.success_dedupe', { count: removed, s: removed === 1 ? '' : 's' }) : t('app.no_duplicates'));
-    }, t('app.error_extract'));
+    }, t('app.error_dedupe'));
 
   const handleFindLoops = (threshold: number) =>
     runProcessing('deduping', t('app.finding_loops'), async () => {
@@ -215,7 +215,7 @@ export function FrameEditorTool({
       setEditorFrames(next);
       const removed = before - next.filter((f) => f.selected).length;
       onPushToast('info', removed > 0 ? t('app.success_loop', { count: removed, s: removed === 1 ? '' : 's' }) : t('app.no_loop'));
-    }, t('app.error_extract'));
+    }, t('app.error_dedupe'));
 
   const handleFindJumps = (threshold: number) =>
     runProcessing('deduping', t('app.finding_jumps'), async () => {
@@ -224,7 +224,7 @@ export function FrameEditorTool({
       setEditorFrames(next);
       const removed = before - next.filter((f) => f.selected).length;
       onPushToast('info', removed > 0 ? t('app.success_jump', { count: removed, s: removed === 1 ? '' : 's' }) : t('app.no_jumps'));
-    }, t('app.error_extract'));
+    }, t('app.error_dedupe'));
 
   const handleInvertSelection = () => {
     setEditorFrames(frames.map((f) => ({ ...f, selected: !f.selected })));
