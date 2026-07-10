@@ -11,13 +11,14 @@ vi.mock('@imgly/background-removal', () => ({
 
 vi.mock('./media', () => ({
   loadImage: vi.fn(async (dataUrl: string) => ({ dataUrl })),
+  canvasToBlobUrl: vi.fn(async (canvas: { src?: string }) => `cropped:${canvas.src}`),
 }));
 
 vi.mock('./canvasEditor', () => ({
   cropToCanvas: vi.fn((img: { dataUrl: string }) => ({
     width: 3,
     height: 4,
-    toDataURL: () => `cropped:${img.dataUrl}`,
+    src: img.dataUrl,
   })),
 }));
 

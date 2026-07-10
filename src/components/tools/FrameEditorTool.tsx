@@ -11,6 +11,7 @@ import { findDuplicateFrames, findLoopFrames, findJumpFrames, batchRemoveBackgro
 import type { PixelRect } from '../../utils/canvasEditor';
 import { exportZIP, exportGIF, exportPNG, exportSpriteSheet } from '../../utils/exporters';
 import { classifyStickerSource, classifySourceKind, revokeFrameUrls, cloneFrameUrl, randomId } from '../../utils/media';
+import { createThrottle } from '../../utils/throttle';
 import { WECHAT_STICKER_PRESET, getWechatReadiness } from '../../utils/wechat';
 import { ProcessingOverlay } from '../ProcessingOverlay';
 import { useAppStore } from '../../store';
@@ -160,8 +161,13 @@ export function FrameEditorTool({
           }
         }
         let extracted: ExtractedFrame[] = [];
+        // Throttle the live gallery updates to ~12 fps during extraction —
+        // onProgress fires per frame and would otherwise re-render every frame
+        // in the gallery on each tick. The final setEditorFrames below still
+        // commits the complete set.
+        const flushProgress = createThrottle(80);
         const onExtractProgress = (f: ExtractedFrame[]) => {
-          if (!append) setEditorFrames([...f], 'extracting');
+          if (!append) flushProgress(() => setEditorFrames([...f], 'extracting'));
         };
         try {
           if (kind === 'gif') {
@@ -248,12 +254,18 @@ export function FrameEditorTool({
 
   const handleRemoveBackgrounds = () =>
     runProcessing('matting', mattingMode === 'edge-key' ? t('app.cleaning_frames') : t('app.loading_matting'), async () => {
+      const flushProgress = createThrottle(80);
       const next = await batchRemoveBackground(
         frames,
         mattingMode,
         (msg, updatedFrames) => {
-          setProcessMsg(msg);
-          setEditorFrames([...updatedFrames]);
+          // Throttle the per-frame gallery + message updates to ~12 fps so a
+          // 100-frame matte doesn't re-render the whole gallery on every frame.
+          // The final setEditorFrames(next) below still commits the result.
+          flushProgress(() => {
+            setProcessMsg(msg);
+            setEditorFrames([...updatedFrames]);
+          });
         },
         (_key, current, total) => {
           // Fires during the one-time model download — surface a real percentage
