@@ -29,6 +29,7 @@
     "no_jumps": "No jump frames found",
     "cleaning_frames": "Cleaning frames...",
     "loading_matting": "Loading AI Model & Matting...",
+    "downloading_model": "Downloading AI model… {{percent}}%",
     "success_matting": "Background removal complete",
     "error_matting": "Background removal failed",
     "select_first": "Select at least one frame first",

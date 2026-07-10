@@ -66,10 +66,6 @@ export function VideoSplitterTool({
   // (rapid A→B selection) don't overwrite the current video's dimensions.
   const currentFileRef = useRef<File | null>(null);
 
-  useEffect(() => {
-    preloadFFmpeg();
-  }, []);
-
   // Revoke the preview URL when it is replaced or the tool unmounts.
   useEffect(() => {
     if (!videoUrl) return;
@@ -92,6 +88,10 @@ export function VideoSplitterTool({
         return;
       }
       currentFileRef.current = file;
+      // Warm up the ffmpeg core now that the user has a video to split. The old
+      // code preloaded it on tool mount, which downloaded the ~32MB WASM core on
+      // every app open regardless of whether the splitter was ever used.
+      void preloadFFmpeg();
       setSourceVideo(file);
       setVideoUrl(URL.createObjectURL(file));
       setSplitParts([]);
