@@ -2,7 +2,7 @@ import JSZip from 'jszip';
 import type { ExtractedFrame } from '../types';
 import { loadImage, resizeImage } from './media';
 import { fitImageToCanvas, getObjectFitRect } from './canvasFit';
-import { getFFmpeg, fileDataToBlob } from './ffmpegSpliter';
+import { getFFmpeg, fileDataToBlob } from './ffmpegSplitter';
 
 export interface ExportResult {
   filename: string;

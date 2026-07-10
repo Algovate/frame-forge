@@ -28,7 +28,7 @@ interface FrameGalleryProps {
 }
 
 const ICON_CTRL =
-  'w-8 h-8 flex items-center justify-center rounded-control text-muted hover:text-foreground hover:bg-white/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
+  'w-11 h-11 flex items-center justify-center rounded-control text-muted hover:text-foreground hover:bg-white/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
 
 /** Compact-slider variant: same theme as SLIDER_STYLES with a smaller handle
  *  for the tight similarity-threshold control. */
@@ -120,6 +120,7 @@ export function FrameGallery({
                   type="button"
                   disabled={isProcessing}
                   onClick={() => onFindLoops?.(threshold)}
+                  aria-label={t('gallery.find_loop')}
                   className="flex items-center gap-1 text-primary hover:bg-primary/10 px-2 py-0.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title={t('gallery.find_loop')}
                 >
@@ -130,6 +131,7 @@ export function FrameGallery({
                   type="button"
                   disabled={isProcessing}
                   onClick={() => onFindJumps?.(threshold)}
+                  aria-label={t('gallery.find_jumps')}
                   className="flex items-center gap-1 text-jump hover:bg-jump/10 px-2 py-0.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title={t('gallery.find_jumps')}
                 >
@@ -140,6 +142,7 @@ export function FrameGallery({
                   type="button"
                   disabled={isProcessing}
                   onClick={() => onFindDuplicates?.(threshold)}
+                  aria-label={t('gallery.find_duplicates')}
                   className="flex items-center gap-1 text-dedupe hover:bg-dedupe/10 px-2 py-0.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title={t('gallery.find_duplicates')}
                 >
@@ -152,57 +155,42 @@ export function FrameGallery({
         </div>
 
         {frames.length > 0 && (
-          <div className="flex flex-wrap gap-1 items-center w-full">
-            <button type="button" disabled={isProcessing} onClick={() => onSelectAll()} className={ICON_CTRL} title={t('gallery.select_all')}>
+          <div className="flex flex-wrap gap-1 items-center w-full" aria-label={t('gallery.selection_controls', 'Selection controls')}>
+            <button type="button" disabled={isProcessing} onClick={() => onSelectAll()} aria-label={t('gallery.select_all')} className={ICON_CTRL} title={t('gallery.select_all')}>
               <CheckSquare className="w-4 h-4" />
             </button>
             {onSelectNone && (
-              <button type="button" disabled={isProcessing} onClick={() => onSelectNone()} className={ICON_CTRL} title={t('gallery.select_none')}>
+              <button type="button" disabled={isProcessing} onClick={() => onSelectNone()} aria-label={t('gallery.select_none')} className={ICON_CTRL} title={t('gallery.select_none')}>
                 <Square className="w-4 h-4" />
               </button>
             )}
-            <button type="button" disabled={isProcessing} onClick={() => onInvertSelection?.()} className={ICON_CTRL} title={t('gallery.invert_selection')}>
+            <button type="button" disabled={isProcessing} onClick={() => onInvertSelection?.()} aria-label={t('gallery.invert_selection')} className={ICON_CTRL} title={t('gallery.invert_selection')}>
               <Shuffle className="w-4 h-4" />
             </button>
-            <button type="button" disabled={isProcessing} onClick={() => onReverseFrames?.()} className={ICON_CTRL} title={t('gallery.reverse_frames')}>
-              <Undo2 className="w-4 h-4" />
-            </button>
-            
-            <div className="flex items-center gap-1 border-l border-hairline pl-1.5 ml-0.5">
-              <button 
-                type="button" 
-                onClick={() => lastClickedId && onRemovePreceding?.(lastClickedId)} 
-                className={ICON_CTRL}
-                disabled={!lastClickedId || isProcessing}
-                title={t('gallery.remove_before')}
-              >
-                <ArrowLeftToLine className="w-4 h-4" />
-              </button>
-              
-              <button 
-                type="button" 
-                onClick={() => lastClickedId && onRemoveSubsequent?.(lastClickedId)} 
-                className={ICON_CTRL}
-                disabled={!lastClickedId || isProcessing}
-                title={t('gallery.remove_after')}
-              >
-                <ArrowRightToLine className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="flex items-center gap-1 sm:ml-1 border-l border-hairline pl-1.5">
-              {onDuplicateSelected && (
-                <button type="button" disabled={isProcessing} onClick={onDuplicateSelected} className={`${ICON_CTRL} hover:bg-white/10`} title={t('gallery.duplicate_selected')}>
-                  <Copy className="w-4 h-4" aria-hidden="true" />
+            {selectedCount > 0 && (
+              <div className="flex items-center gap-1 border-l border-hairline pl-1.5 ml-0.5" aria-label={t('gallery.selected_actions', 'Selected frame actions')}>
+                <button type="button" disabled={isProcessing} onClick={() => onReverseFrames?.()} aria-label={t('gallery.reverse_frames')} className={ICON_CTRL} title={t('gallery.reverse_frames')}>
+                  <Undo2 className="w-4 h-4" />
                 </button>
-              )}
-              <button type="button" disabled={isProcessing} onClick={onDeleteSelected} className={`${ICON_CTRL} text-destructive hover:bg-destructive/10`} title={t('gallery.delete_selected')}>
-                <Trash2 className="w-4 h-4" aria-hidden="true" />
-              </button>
-              <button type="button" disabled={isProcessing} onClick={onDeleteUnselected} className={`${ICON_CTRL} text-destructive hover:bg-destructive/10`} title={t('gallery.delete_unselected')}>
-                <Trash2 className="w-4 h-4 opacity-60" aria-hidden="true" />
-              </button>
-            </div>
+                <button type="button" onClick={() => lastClickedId && onRemovePreceding?.(lastClickedId)} aria-label={t('gallery.remove_before')} className={ICON_CTRL} disabled={!lastClickedId || isProcessing} title={t('gallery.remove_before')}>
+                  <ArrowLeftToLine className="w-4 h-4" />
+                </button>
+                <button type="button" onClick={() => lastClickedId && onRemoveSubsequent?.(lastClickedId)} aria-label={t('gallery.remove_after')} className={ICON_CTRL} disabled={!lastClickedId || isProcessing} title={t('gallery.remove_after')}>
+                  <ArrowRightToLine className="w-4 h-4" />
+                </button>
+                {onDuplicateSelected && (
+                  <button type="button" disabled={isProcessing} onClick={onDuplicateSelected} aria-label={t('gallery.duplicate_selected')} className={`${ICON_CTRL} hover:bg-white/10`} title={t('gallery.duplicate_selected')}>
+                    <Copy className="w-4 h-4" aria-hidden="true" />
+                  </button>
+                )}
+                <button type="button" disabled={isProcessing} onClick={onDeleteSelected} aria-label={t('gallery.delete_selected')} className={`${ICON_CTRL} text-destructive hover:bg-destructive/10`} title={t('gallery.delete_selected')}>
+                  <Trash2 className="w-4 h-4" aria-hidden="true" />
+                </button>
+                <button type="button" disabled={isProcessing} onClick={onDeleteUnselected} aria-label={t('gallery.delete_unselected')} className={`${ICON_CTRL} text-destructive hover:bg-destructive/10`} title={t('gallery.delete_unselected')}>
+                  <Trash2 className="w-4 h-4 opacity-60" aria-hidden="true" />
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

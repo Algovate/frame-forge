@@ -1,7 +1,7 @@
 import { parseGIF, decompressFrames } from 'gifuct-js';
 import type { ExtractedFrame } from '../types';
 import { loadImage, randomId, canvasToBlobUrl, revokeFrameUrls } from './media';
-import { getFFmpeg, fileDataToBlob } from './ffmpegSpliter';
+import { getFFmpeg, fileDataToBlob } from './ffmpegSplitter';
 import { fetchFile } from '@ffmpeg/util';
 
 export const extractFromGIF = async (

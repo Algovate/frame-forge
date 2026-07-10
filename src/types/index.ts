@@ -15,9 +15,9 @@ export interface ExtractedFrame {
 
 export type StickerSourceKind = 'gif' | 'video' | 'static-image' | 'static-images-batch';
 
-export interface AssetLibraryItem {
+export interface ProjectAsset {
   id: string;
-  kind: 'split-video';
+  kind: 'image' | 'video' | 'split-video';
   name: string;
   blob: Blob;
   file: File;

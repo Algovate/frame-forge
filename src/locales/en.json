@@ -1,13 +1,20 @@
 {
   "header": {
     "title": "Frame Forge",
-    "subtitle": "Browser-based frame extractor",
+    "subtitle": "Dynamic Sticker Studio",
     "add_frames": "Add Frames",
     "new_source": "New Source"
   },
   "tools": {
     "frame_editor": "Frame Editor",
+    "canvas_editor": "Canvas Editor",
     "video_splitter": "Video Splitter"
+  },
+  "nav": {
+    "workspace": "Workspace",
+    "studio": "Sticker Studio",
+    "assets": "Project Assets",
+    "tools": "Tools"
   },
   "app": {
     "error_batch_static": "Batch {{verb}} only supports static images.",
@@ -48,6 +55,7 @@
     "success_duplicate": "Duplicated {{count}} frame{{s}}",
     "success_clips_loaded": "Loaded {{count}} sticker clip{{s}}",
     "frame_saved": "Frame saved",
+    "save_failed": "Failed to save image",
     "applying_crop": "Applying crop to selected frames...",
     "success_crop": "Cropped {{count}} selected frame{{s}}",
     "error_crop": "Batch crop failed",
@@ -131,7 +139,9 @@
     "frame_number": "Frame {{number}}",
     "frame_selected": "Frame {{number}}, selected",
     "frame_not_selected": "Frame {{number}}, not selected",
-    "edit_frame": "Edit Frame"
+    "edit_frame": "Edit Frame",
+    "selection_controls": "Selection controls",
+    "selected_actions": "Selected frame actions"
   },
   "clips": {
     "title": "Sticker queue",
@@ -149,7 +159,8 @@
     "empty_desc": "Split a video to add reusable sticker clips here.",
     "clear_all": "Clear All",
     "delete": "Delete",
-    "download": "Download"
+    "download": "Download",
+    "add_image": "Add image"
   },
   "editor": {
     "discard": "Discard unsaved edits?",
@@ -202,10 +213,13 @@
     "restore": "Restore",
     "restore_title": "Restore original",
     "close": "Close",
-    "save_close": "Save & close",
-    "hint_zoom": "Alt + Scroll: zoom",
-    "hint_pan": "Alt / Middle-drag: pan",
-    "fit": "Fit"
+    "save_close": "Save & Close",
+    "back_to_studio": "Back to Sticker Studio",
+    "hint_zoom": "Alt + Scroll: Zoom",
+    "hint_pan": "Alt / MMB drag: Pan",
+    "fit": "Fit View",
+    "empty_title": "No active canvas",
+    "empty_desc": "Select a frame from the gallery, or drop an image here to edit."
   },
   "splitter": {
     "title": "Video Grid Splitter",

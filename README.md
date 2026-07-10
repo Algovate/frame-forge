@@ -1,6 +1,6 @@
 # Frame Forge
 
-Frame Forge is a browser-based tool for making WeChat dynamic stickers from videos and GIFs. It extracts or parses sticker frames, helps clean and matte the sequence, previews the animation, checks the WeChat export setup, and exports a 240 x 240 animated GIF.
+Frame Forge is a browser-based dynamic sticker creation tool for making WeChat dynamic stickers from videos and GIFs. It extracts or parses sticker frames, helps clean and matte the sequence, previews the animation, checks the WeChat export setup, and exports a 240 x 240 animated GIF.
 
 ## Features
 

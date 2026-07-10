@@ -13,12 +13,12 @@
 ### Task 1: Splitter Structured Parts
 
 **Files:**
-- Modify: `src/utils/ffmpegSpliter.ts`
-- Test: `src/utils/ffmpegSpliter.test.ts`
+- Modify: `src/utils/ffmpegSplitter.ts`
+- Test: `src/utils/ffmpegSplitter.test.ts`
 
 - [ ] **Step 1: Add pure geometry helpers and types**
 
-Create `SplitVideoPart`, `SplitGridGeometry`, `getSplitGridGeometry`, and `getSplitPartFilename` in `src/utils/ffmpegSpliter.ts`.
+Create `SplitVideoPart`, `SplitGridGeometry`, `getSplitGridGeometry`, and `getSplitPartFilename` in `src/utils/ffmpegSplitter.ts`.
 
 - [ ] **Step 2: Add tests for geometry and naming**
 
@@ -34,7 +34,7 @@ Add `createSplitZip(parts)` and make existing `splitVideoGrid(...)` a compatibil
 
 - [ ] **Step 5: Run tests**
 
-Run `npm test -- src/utils/ffmpegSpliter.test.ts`.
+Run `npm test -- src/utils/ffmpegSplitter.test.ts`.
 
 ### Task 2: App Handoff Contract
 

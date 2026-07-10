@@ -1,20 +1,21 @@
-import { useCallback } from 'react';
-import { Grid3X3, Inbox, Play, Trash2, Download } from 'lucide-react';
+import { useCallback, useRef } from 'react';
+import { Grid3X3, Inbox, Play, Trash2, Download, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { AssetLibraryItem } from '../../types';
+import type { ProjectAsset } from '../../types';
 import { HEADING } from '../ui';
 import { downloadBlob } from '../../utils/exporters';
 import { useObjectUrlMap } from './useObjectUrlMap';
 
 interface AssetLibraryPanelProps {
-  assets: AssetLibraryItem[];
+  assets: ProjectAsset[];
   columns?: number;
   title?: string;
   resolutionLabel?: string;
-  onUseAsset: (asset: AssetLibraryItem) => void;
-  onUseAll?: (assets: AssetLibraryItem[]) => void;
+  onUseAsset: (asset: ProjectAsset) => void;
+  onUseAll?: (assets: ProjectAsset[]) => void;
   onRemoveAsset?: (id: string) => void;
   onClearAssets?: () => void;
+  onAddImage?: (file: File) => void;
 }
 
 export function AssetLibraryPanel({
@@ -26,21 +27,48 @@ export function AssetLibraryPanel({
   onUseAll,
   onRemoveAsset,
   onClearAssets,
+  onAddImage,
 }: AssetLibraryPanelProps) {
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const { t } = useTranslation();
-  const getAssetKey = useCallback((asset: AssetLibraryItem) => asset.id, []);
-  const getAssetBlob = useCallback((asset: AssetLibraryItem) => asset.blob, []);
+  const getAssetKey = useCallback((asset: ProjectAsset) => asset.id, []);
+  const getAssetBlob = useCallback((asset: ProjectAsset) => asset.blob, []);
   const assetUrls = useObjectUrlMap(assets, getAssetKey, getAssetBlob);
   const gridColumns = Math.max(1, Math.min(columns, 4));
 
   return (
     <div className="glass-panel rounded-card p-3">
       <div className="flex items-start justify-between gap-3 mb-3">
-        <h2 className={`${HEADING} mb-0`}>
+        <h2 className={`${HEADING} mb-0 flex items-center gap-1.5`}>
           <Grid3X3 className="w-5 h-5 text-primary" aria-hidden="true" /> {title ?? t('assets.library')}
         </h2>
-        <div className="text-right leading-tight">
-          <div className="text-[11px] font-mono text-foreground">{assets.length}</div>
+        <div className="text-right leading-tight flex flex-col items-end">
+          <div className="flex items-center gap-2">
+            {onAddImage && (
+              <>
+                <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) onAddImage(file);
+                  event.target.value = '';
+                }} />
+                <button type="button" onClick={() => imageInputRef.current?.click()} className="min-h-8 px-2 rounded-control text-primary hover:bg-primary/10 transition-colors" title={t('assets.add_image', 'Add image')}>
+                  <Plus className="w-4 h-4" aria-hidden="true" />
+                  <span className="sr-only">{t('assets.add_image', 'Add image')}</span>
+                </button>
+              </>
+            )}
+            <span className="text-[11px] font-mono text-foreground">{assets.length}</span>
+            {onClearAssets && assets.length > 0 && (
+              <button
+                type="button"
+                onClick={onClearAssets}
+                className="text-muted hover:text-red-500 transition-colors p-0.5 rounded-sm"
+                title={t('assets.clear_all', 'Clear All')}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
           {resolutionLabel && <div className="text-[10px] font-mono text-muted">{resolutionLabel}</div>}
         </div>
       </div>
@@ -53,26 +81,15 @@ export function AssetLibraryPanel({
         </div>
       ) : null}
 
-      {assets.length > 0 && (
-        <div className="flex gap-2 mb-3">
-          {onUseAll && (
-            <button
-              type="button"
-              onClick={() => onUseAll(assets)}
-              className="flex-1 min-h-[30px] rounded-control border border-primary/35 bg-primary/10 text-xs font-semibold text-primary hover:bg-primary/15 transition-colors"
-            >
-              {t('assets.use_all')}
-            </button>
-          )}
-          {onClearAssets && (
-            <button
-              type="button"
-              onClick={onClearAssets}
-              className="flex-1 min-h-[30px] rounded-control border border-red-500/35 bg-red-500/10 text-xs font-semibold text-red-500 hover:bg-red-500/15 transition-colors"
-            >
-              {t('assets.clear_all', 'Clear All')}
-            </button>
-          )}
+      {assets.length > 0 && onUseAll && (
+        <div className="mb-3">
+          <button
+            type="button"
+            onClick={() => onUseAll(assets)}
+            className="w-full min-h-[30px] rounded-control border border-primary/35 bg-primary/10 text-xs font-semibold text-primary hover:bg-primary/15 transition-colors"
+          >
+            {t('assets.use_all')}
+          </button>
         </div>
       )}
 
@@ -106,11 +123,11 @@ function AssetTile({
   onUseAsset,
   onRemoveAsset,
 }: {
-  asset: AssetLibraryItem;
+  asset: ProjectAsset;
   index: number;
   previewUrl?: string;
   useLabel: string;
-  onUseAsset: (asset: AssetLibraryItem) => void;
+  onUseAsset: (asset: ProjectAsset) => void;
   onRemoveAsset?: (id: string) => void;
 }) {
   const position = asset.row !== undefined && asset.col !== undefined ? `${asset.row + 1},${asset.col + 1}` : `${index + 1}`;
@@ -125,7 +142,13 @@ function AssetTile({
         title={asset.name}
         className="absolute inset-0 w-full h-full text-left"
       >
-        {previewUrl ? (
+        {previewUrl && asset.kind === 'image' ? (
+          <img
+            src={previewUrl}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
+          />
+        ) : previewUrl ? (
           <video
             src={previewUrl}
             muted

@@ -51,6 +51,29 @@ export const canvasToBlobUrl = (
     canvas.toBlob((blob) => resolve(blob ? URL.createObjectURL(blob) : fallback), type);
   });
 
+/** Rasterize a canvas straight to a Blob — skips the base64 encode/decode
+ *  round-trip that `toDataURL` + `atob` would require. Resolves to `null`
+ *  when the browser can't encode the requested type. */
+export const canvasToBlob = (
+  canvas: HTMLCanvasElement,
+  type = 'image/png',
+): Promise<Blob | null> =>
+  new Promise((resolve) => canvas.toBlob(resolve, type));
+
+/** Decode a `data:` URL back to a Blob in-memory (no fetch round-trip), for
+ *  sources that only expose a data URL (e.g. grid-split frame output) when the
+ *  consumer needs a Blob. */
+export const dataUrlToBlob = (dataUrl: string): Blob => {
+  const comma = dataUrl.indexOf(',');
+  if (comma < 0) return new Blob([]);
+  const header = dataUrl.slice(0, comma);
+  const byteString = atob(dataUrl.slice(comma + 1));
+  const mime = /:(.*?);/.exec(header)?.[1] ?? 'image/png';
+  const ia = new Uint8Array(byteString.length);
+  for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+  return new Blob([ia], { type: mime });
+};
+
 /** Resize a frame's data URL to w×h. Returns the original data URL unchanged
  *  when either dimension is missing (the "auto" case). */
 export const resizeImage = async (dataUrl: string, w: number, h: number): Promise<string> => {

@@ -1,13 +1,20 @@
 {
   "header": {
     "title": "Frame Forge",
-    "subtitle": "浏览器端帧提取工具",
+    "subtitle": "动态表情制作工具",
     "add_frames": "添加帧",
     "new_source": "重新开始"
   },
   "tools": {
     "frame_editor": "逐帧编辑器",
+    "canvas_editor": "画布编辑器",
     "video_splitter": "视频拆分器"
+  },
+  "nav": {
+    "workspace": "工作区",
+    "studio": "表情制作",
+    "assets": "项目素材",
+    "tools": "工具"
   },
   "app": {
     "error_batch_static": "批量{{verb}}仅支持静态图片。",
@@ -48,6 +55,7 @@
     "success_duplicate": "已复制 {{count}} 帧",
     "success_clips_loaded": "已加载 {{count}} 个表情片段",
     "frame_saved": "帧已保存",
+    "save_failed": "保存图片失败",
     "applying_crop": "正在将裁剪应用到选中帧...",
     "success_crop": "已裁剪 {{count}} 个选中帧",
     "error_crop": "批量裁剪失败",
@@ -131,7 +139,9 @@
     "frame_number": "第 {{number}} 帧",
     "frame_selected": "第 {{number}} 帧，已选中",
     "frame_not_selected": "第 {{number}} 帧，未选中",
-    "edit_frame": "编辑该帧"
+    "edit_frame": "编辑该帧",
+    "selection_controls": "选择控制",
+    "selected_actions": "已选帧操作"
   },
   "clips": {
     "title": "表情队列",
@@ -149,7 +159,8 @@
     "empty_desc": "拆分视频后，可复用的表情片段会出现在这里。",
     "clear_all": "清空全部",
     "delete": "删除",
-    "download": "下载"
+    "download": "下载",
+    "add_image": "添加图片"
   },
   "editor": {
     "discard": "确定要放弃未保存的修改吗？",
@@ -202,10 +213,13 @@
     "restore": "恢复",
     "restore_title": "恢复原图",
     "close": "关闭",
-    "save_close": "保存并关闭",
+    "save_close": "保存并返回",
+    "back_to_studio": "返回表情制作",
     "hint_zoom": "Alt + 滚轮: 缩放",
     "hint_pan": "Alt 或 鼠标中键拖拽: 平移",
-    "fit": "适应窗口"
+    "fit": "适应窗口",
+    "empty_title": "暂无激活的画布",
+    "empty_desc": "请从逐帧图库或素材库中选择一张图片，或直接将图片拖拽到此处开始编辑。"
   },
   "splitter": {
     "title": "视频网格拆分器",

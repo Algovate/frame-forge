@@ -23,22 +23,23 @@ import {
   getVideoDimensions,
   MAX_VIDEO_SIZE,
   type SplitVideoPart,
-} from '../../utils/ffmpegSpliter';
+} from '../../utils/ffmpegSplitter';
 import { downloadBlob } from '../../utils/exporters';
 import { ProcessingOverlay } from '../ProcessingOverlay';
 import { HEADING, SLIDER_STYLES } from '../ui';
 import type { ToastType } from '../Toast';
+import { useAppStore } from '../../store';
+import { assetFromFile, assetFromSplitPart } from '../../utils/assets';
 
 interface VideoSplitterToolProps {
   onPushToast: (type: ToastType, message: string) => void;
-  onAddSplitPartsToAssetLibrary: (parts: SplitVideoPart[]) => void;
 }
 
 export function VideoSplitterTool({
   onPushToast,
-  onAddSplitPartsToAssetLibrary,
 }: VideoSplitterToolProps) {
   const { t } = useTranslation();
+  const { setLoadFileIntoVideoSplitter, setAssetLibrary } = useAppStore();
   const [sourceVideo, setSourceVideo] = useState<File | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoDimensions, setVideoDimensions] = useState<{ width: number; height: number } | null>(null);
@@ -65,6 +66,10 @@ export function VideoSplitterTool({
   // Tracks the most recently accepted file so out-of-order dimension probes
   // (rapid A→B selection) don't overwrite the current video's dimensions.
   const currentFileRef = useRef<File | null>(null);
+  // Live mirror of isProcessing so the registered clip-load handler can read it
+  // at call time without re-registering on every processing toggle.
+  const isProcessingRef = useRef(isProcessing);
+  isProcessingRef.current = isProcessing;
 
   // Revoke the preview URL when it is replaced or the tool unmounts.
   useEffect(() => {
@@ -76,17 +81,27 @@ export function VideoSplitterTool({
     setSplitParts([]);
   }, [rows, cols, gap, padding, removeAudio, startTimeStr, endTimeStr]);
 
-  const acceptVideo = useCallback(
-    async (file: File | undefined | null) => {
-      if (!file) return;
+  // Shared guard for both the import path (handleImportFile) and the
+  // library-load path (acceptVideo) so the two can't drift apart.
+  const validateVideoFile = useCallback(
+    (file: File | undefined | null): file is File => {
+      if (!file) return false;
       if (!file.type.startsWith('video/')) {
         onPushToast('error', t('app.error_unsupported'));
-        return;
+        return false;
       }
       if (file.size > MAX_VIDEO_SIZE) {
         onPushToast('error', t('splitter.error_too_large'));
-        return;
+        return false;
       }
+      return true;
+    },
+    [onPushToast, t],
+  );
+
+  const acceptVideo = useCallback(
+    async (file: File | undefined | null) => {
+      if (!validateVideoFile(file)) return;
       currentFileRef.current = file;
       // Warm up the ffmpeg core now that the user has a video to split. The old
       // code preloaded it on tool mount, which downloaded the ~32MB WASM core on
@@ -103,8 +118,16 @@ export function VideoSplitterTool({
         if (currentFileRef.current === file) onPushToast('error', t('splitter.error_load'));
       }
     },
-    [onPushToast, t],
+    [validateVideoFile, onPushToast, t],
   );
+
+  useEffect(() => {
+    setLoadFileIntoVideoSplitter((file: File) => {
+      if (isProcessingRef.current) return;
+      acceptVideo(file);
+    });
+    return () => setLoadFileIntoVideoSplitter(null);
+  }, [setLoadFileIntoVideoSplitter, acceptVideo]);
 
   // Drag-counter pattern: entering a child fires dragleave on the parent and
   // would flicker the highlight without the counter.
@@ -128,12 +151,19 @@ export function VideoSplitterTool({
       setIsDragOver(false);
     }
   };
+  const handleImportFile = (file: File | undefined | null) => {
+    if (!validateVideoFile(file)) return;
+    const asset = assetFromFile(file);
+    setAssetLibrary((prev) => [...prev, asset]);
+    onPushToast('success', t('app.success_clips_loaded', { count: 1 }));
+  };
+
   const onDrop = (e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     dragCounter.current = 0;
     setIsDragOver(false);
-    acceptVideo(e.dataTransfer.files?.[0]);
+    handleImportFile(e.dataTransfer.files?.[0]);
   };
 
   const handleSplit = async () => {
@@ -164,7 +194,7 @@ export function VideoSplitterTool({
       });
 
       setSplitParts(parts);
-      onAddSplitPartsToAssetLibrary(parts);
+      setAssetLibrary((prev) => [...prev, ...parts.map(assetFromSplitPart)]);
 
       onPushToast('success', t('splitter.success_split'));
     } catch (e) {
@@ -243,7 +273,7 @@ export function VideoSplitterTool({
                 <input
                   type="file"
                   accept="video/*"
-                  onChange={(e) => acceptVideo(e.target.files?.[0])}
+                  onChange={(e) => handleImportFile(e.target.files?.[0])}
                   className="peer sr-only"
                 />
                 <Upload

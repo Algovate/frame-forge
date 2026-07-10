@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import JSZip from 'jszip';
-import { createSplitZip, getSplitGridGeometry, getSplitPartFilename, type SplitVideoPart } from './ffmpegSpliter';
+import { createSplitZip, getSplitGridGeometry, getSplitPartFilename, type SplitVideoPart } from './ffmpegSplitter';
 
 describe('ffmpeg splitter helpers', () => {
   it('names parts in row/column order', () => {

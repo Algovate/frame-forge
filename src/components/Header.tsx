@@ -1,132 +1,80 @@
-import { Layers, RotateCcw, Plus, Languages, Film, Grid3X3 } from 'lucide-react';
+import { Layers, RotateCcw, Plus, Languages, Film, Grid3X3, PanelLeft } from 'lucide-react';
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAppStore, type ToolType } from '../store';
+import { useAppStore } from '../store';
 
 const HEADER_BUTTON_CLASS =
-  'flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted hover:text-foreground bg-surface-hover hover:bg-hairline rounded-control transition-colors border border-hairline hover:border-primary/30';
+  'min-h-11 flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted hover:text-foreground bg-surface-hover hover:bg-hairline rounded-control transition-colors border border-hairline hover:border-primary/30';
 
 export function Header() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { t, i18n } = useTranslation();
-  const { activeTool, setActiveTool, resetWorkspace, appendFilesHandler, frames, isProcessing } = useAppStore();
+  const {
+    activeTool, setActiveTool, resetWorkspace, appendFramesFromFiles, frames, isProcessing,
+    assetLibrary, isAssetPanelOpen, setIsAssetPanelOpen,
+  } = useAppStore();
   const hasFrames = frames.length > 0;
-
-  const tools = [
-    { id: 'frame' as const, Icon: Film, label: t('tools.frame_editor', 'Frame Editor') },
-    { id: 'split' as const, Icon: Grid3X3, label: t('tools.video_splitter', 'Video Splitter') },
-  ];
+  const isStudioActive = activeTool === 'studio' || activeTool === 'canvas-editor';
 
   const toggleLanguage = () => {
-    const nextLng = i18n.language === 'en' ? 'zh' : 'en';
-    i18n.changeLanguage(nextLng);
+    i18n.changeLanguage(i18n.language === 'en' ? 'zh' : 'en');
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      appendFilesHandler?.(Array.from(e.target.files));
+    if (e.target.files?.length) {
+      appendFramesFromFiles?.(Array.from(e.target.files));
       e.target.value = '';
     }
   };
 
   return (
-    <header className="flex flex-col sm:flex-row sm:items-center justify-between mb-5 w-full gap-4">
-      <div className="flex items-center gap-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-control grid place-items-center bg-gradient-to-br from-primary to-dedupe shadow-[0_0_24px_var(--accent-glow)] shrink-0">
+    <header className="flex flex-col gap-3 mb-4 w-full sm:mb-5 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-wrap items-center gap-3 sm:gap-6">
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="w-10 h-10 rounded-control grid place-items-center bg-gradient-to-br from-primary to-dedupe shadow-[0_0_24px_var(--accent-glow)]">
             <Layers className="w-5 h-5 text-white" aria-hidden="true" />
           </div>
           <div>
             <h1 className="text-xl font-bold tracking-tight leading-tight">{t('header.title', 'Frame Forge')}</h1>
-            <p className="text-xs text-muted leading-tight mt-0.5">
-              {t('header.subtitle', 'Browser-based frame extractor')}
-            </p>
+            <p className="text-xs text-muted leading-tight mt-0.5">{t('header.subtitle', 'Browser-based frame extractor')}</p>
           </div>
         </div>
 
-        {/* Tool Switcher — desktop (icons + labels) */}
-        <ToolSwitcher tools={tools} activeTool={activeTool} onToolChange={setActiveTool} showLabels className="hidden sm:flex" />
+        <nav aria-label={t('nav.workspace', 'Workspace')} className="flex w-full items-stretch gap-1 rounded-control border border-hairline bg-surface-hover p-1 sm:w-auto">
+          <button type="button" onClick={() => setActiveTool('studio')} aria-current={isStudioActive ? 'page' : undefined}
+            className={`min-h-11 flex flex-1 items-center justify-center gap-2 rounded-sm px-3 text-xs font-medium transition-colors sm:flex-none sm:text-sm ${isStudioActive ? 'bg-background shadow text-foreground' : 'text-muted hover:text-foreground'}`}>
+            <Film className="w-4 h-4" aria-hidden="true" /> <span>{t('nav.studio', 'Sticker Studio')}</span>
+          </button>
+          <button type="button" onClick={() => setIsAssetPanelOpen((open) => !open)} aria-expanded={isAssetPanelOpen}
+            className={`relative min-h-11 flex flex-1 items-center justify-center gap-2 rounded-sm px-3 text-xs font-medium transition-colors sm:flex-none sm:text-sm ${isAssetPanelOpen ? 'bg-background shadow text-foreground' : 'text-muted hover:text-foreground'}`}>
+            <PanelLeft className="w-4 h-4" aria-hidden="true" /> <span>{t('nav.assets', 'Project Assets')}</span>
+            {assetLibrary.length > 0 && <span className="min-w-4 rounded-full bg-primary/15 px-1 text-[10px] font-mono text-primary">{assetLibrary.length}</span>}
+          </button>
+          <button type="button" onClick={() => setActiveTool('splitter')} aria-current={activeTool === 'splitter' ? 'page' : undefined}
+            className={`min-h-11 flex flex-1 items-center justify-center gap-2 rounded-sm px-3 text-xs font-medium transition-colors sm:flex-none sm:text-sm ${activeTool === 'splitter' ? 'bg-background shadow text-foreground' : 'text-muted hover:text-foreground'}`}>
+            <Grid3X3 className="w-4 h-4" aria-hidden="true" /> <span>{t('nav.tools', 'Tools')}</span>
+          </button>
+        </nav>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        {/* Tool Switcher — mobile (icons only) */}
-        <ToolSwitcher tools={tools} activeTool={activeTool} onToolChange={setActiveTool} showLabels={false} className="flex sm:hidden mr-auto" />
-
-        {activeTool === 'frame' && appendFilesHandler && hasFrames && !isProcessing && (
+        {isStudioActive && appendFramesFromFiles && hasFrames && !isProcessing && (
           <>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              multiple
-              accept="image/*,video/*,.gif"
-              className="hidden"
-            />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className={HEADER_BUTTON_CLASS}
-              title={t('header.add_frames', 'Add Frames')}
-            >
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">{t('header.add_frames', 'Add Frames')}</span>
+            <input type="file" ref={fileInputRef} onChange={handleFileChange} multiple accept="image/*,video/*,.gif" className="hidden" />
+            <button type="button" onClick={() => fileInputRef.current?.click()} className={HEADER_BUTTON_CLASS}>
+              <Plus className="w-4 h-4" aria-hidden="true" /> <span>{t('header.add_frames', 'Add Frames')}</span>
             </button>
           </>
         )}
-
-        {activeTool === 'frame' && hasFrames && !isProcessing && (
-          <button
-            type="button"
-            onClick={resetWorkspace}
-            className={HEADER_BUTTON_CLASS}
-            title={t('header.new_source', 'New Source')}
-          >
-            <RotateCcw className="w-4 h-4" />
-            <span className="hidden sm:inline">{t('header.new_source', 'New Source')}</span>
+        {isStudioActive && hasFrames && !isProcessing && (
+          <button type="button" onClick={resetWorkspace} className={HEADER_BUTTON_CLASS}>
+            <RotateCcw className="w-4 h-4" aria-hidden="true" /> <span>{t('header.new_source', 'New Source')}</span>
           </button>
         )}
-
-        <button
-          type="button"
-          onClick={toggleLanguage}
-          className={HEADER_BUTTON_CLASS}
-          title={i18n.language === 'en' ? 'Switch to Chinese' : '切换到英文'}
-        >
-          <Languages className="w-4 h-4" />
-          <span className="hidden sm:inline">{i18n.language === 'en' ? 'EN' : '中'}</span>
+        <button type="button" onClick={toggleLanguage} className={HEADER_BUTTON_CLASS} title={i18n.language === 'en' ? 'Switch to Chinese' : '切换到英文'}>
+          <Languages className="w-4 h-4" aria-hidden="true" /> <span>{i18n.language === 'en' ? 'EN' : '中'}</span>
         </button>
       </div>
     </header>
-  );
-}
-
-function ToolSwitcher({
-  tools,
-  activeTool,
-  onToolChange,
-  showLabels,
-  className,
-}: {
-  tools: { id: ToolType; Icon: typeof Film; label: string }[];
-  activeTool: ToolType;
-  onToolChange: (tool: ToolType) => void;
-  showLabels: boolean;
-  className: string;
-}) {
-  return (
-    <div className={`bg-surface-hover border border-hairline rounded-control p-1 ${className}`}>
-      {tools.map(({ id, Icon, label }) => (
-        <button
-          key={id}
-          onClick={() => onToolChange(id)}
-          className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-sm transition-colors ${
-            activeTool === id ? 'bg-background shadow text-foreground' : 'text-muted hover:text-foreground'
-          }`}
-        >
-          <Icon className="w-4 h-4" />
-          {showLabels && label}
-        </button>
-      ))}
-    </div>
   );
 }

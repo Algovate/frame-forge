@@ -3,34 +3,31 @@ import { useTranslation } from 'react-i18next';
 import { ImportScreen } from '../ImportScreen';
 import { RightSidebar } from '../RightSidebar';
 import { FrameGallery } from '../FrameGallery';
-import { FrameEditorModal } from '../FrameEditorModal';
+
 import type { ToastType } from '../Toast';
-import type { AssetLibraryItem, ExtractedFrame, MattingMode, ProcessingPhase } from '../../types';
+import type { ProjectAsset, ExtractedFrame, MattingMode, ProcessingPhase } from '../../types';
 import { extractFromGIF, extractFromVideo, extractFromImages } from '../../utils/extractors';
-import { findDuplicateFrames, findLoopFrames, findJumpFrames, batchRemoveBackground, cropFrames } from '../../utils/processors';
-import type { PixelRect } from '../../utils/canvasEditor';
+import { findDuplicateFrames, findLoopFrames, findJumpFrames, batchRemoveBackground } from '../../utils/processors';
 import { exportZIP, exportGIF, exportPNG, exportSpriteSheet } from '../../utils/exporters';
 import { classifyStickerSource, classifySourceKind, revokeFrameUrls, cloneFrameUrl, randomId } from '../../utils/media';
 import { WECHAT_STICKER_PRESET, getWechatReadiness } from '../../utils/wechat';
 import { ProcessingOverlay } from '../ProcessingOverlay';
 import { useAppStore } from '../../store';
+import { assetFromFile } from '../../utils/assets';
 
 interface FrameEditorToolProps {
   onPushToast: (type: ToastType, message: string) => void;
-  onAssetStatusChange?: (id: string, status: AssetLibraryItem['status'], errorMessage?: string) => void;
 }
 
 export function FrameEditorTool({
   onPushToast,
-  onAssetStatusChange,
 }: FrameEditorToolProps) {
   const { t } = useTranslation();
-  const { frames, setFrames, sourceFiles, setSourceFiles, activeAssetId, setActiveAssetId, setAppendFilesHandler, setLoadIncomingClipHandler, isProcessing, setIsProcessing } = useAppStore();
+  const { frames, setFrames, sourceFiles, setSourceFiles, activeAssetId, setActiveAssetId, setAppendFramesFromFiles, setLoadAssetIntoFrameEditor, isProcessing, setIsProcessing, setAssetLibrary, setEditingFrameId, setEditingAssetId, setActiveTool } = useAppStore();
   const framesRef = useRef(frames);
   framesRef.current = frames;
   const [phase, setPhase] = useState<ProcessingPhase>('idle');
   const [processMsg, setProcessMsg] = useState('');
-  const [editingFrameId, setEditingFrameId] = useState<string | null>(null);
 
   // Settings
   const [fps, setFps] = useState<number>(10);
@@ -45,19 +42,34 @@ export function FrameEditorTool({
   const [spriteCols, setSpriteCols] = useState<number>(0);
   const [spritePadding, setSpritePadding] = useState<number>(0);
 
-  const setEditorFrames = useCallback((action: SetStateAction<ExtractedFrame[]>, status: AssetLibraryItem['status'] = 'edited') => {
-    setFrames((prev) => {
-      const next = typeof action === 'function' ? action(prev) : action;
-      if (activeAssetId && onAssetStatusChange) {
-        onAssetStatusChange(activeAssetId, next.length > 0 ? status : 'queued');
+  // Patch the active asset, skipping the allocation when nothing actually
+  // changed — frame mutations route through setEditorFrames and fire this
+  // often, so the bail-out keeps the asset array identity (and the
+  // AssetLibraryPanel re-render) stable across no-op edits.
+  const patchActiveAsset = useCallback((patch: Partial<ProjectAsset>) => {
+    if (!activeAssetId) return;
+    setAssetLibrary((prev) => {
+      const current = prev.find((a) => a.id === activeAssetId);
+      if (current && (Object.keys(patch) as (keyof ProjectAsset)[]).every((k) => current[k] === patch[k])) {
+        return prev;
       }
-      return next;
+      return prev.map((a) => (a.id === activeAssetId ? { ...a, ...patch } : a));
     });
-  }, [activeAssetId, onAssetStatusChange]);
+  }, [activeAssetId, setAssetLibrary]);
+
+  const setEditorFrames = useCallback((action: SetStateAction<ExtractedFrame[]>, status: ProjectAsset['status'] = 'edited') => {
+    // Resolve the next frames from the live store, then sync the asset status
+    // as a sibling call — never inside the setFrames updater, where it would be
+    // a side effect smuggled into a reducer.
+    const prev = useAppStore.getState().frames;
+    const next = typeof action === 'function' ? action(prev) : action;
+    setFrames(next);
+    patchActiveAsset({ status: next.length > 0 ? status : 'queued', errorMessage: undefined });
+  }, [patchActiveAsset, setFrames]);
 
   // Register the handler the asset library calls to load a clip into the editor.
   useEffect(() => {
-    setLoadIncomingClipHandler((asset: AssetLibraryItem) => {
+    setLoadAssetIntoFrameEditor((asset: ProjectAsset) => {
       revokeFrameUrls(framesRef.current);
       setActiveAssetId(asset.id);
       setFrames([]);
@@ -72,8 +84,8 @@ export function FrameEditorTool({
       setEndTime(-1);
       onPushToast('success', t('app.success_loaded', { filename: asset.name }));
     });
-    return () => setLoadIncomingClipHandler(null);
-  }, [setLoadIncomingClipHandler, setActiveAssetId, setFrames, setSourceFiles, onPushToast, t]);
+    return () => setLoadAssetIntoFrameEditor(null);
+  }, [setLoadAssetIntoFrameEditor, setActiveAssetId, setFrames, setSourceFiles, onPushToast, t]);
 
   const runProcessing = useCallback(
     (p: ProcessingPhase, message: string, work: () => Promise<void>, errorText: string) => {
@@ -91,16 +103,14 @@ export function FrameEditorTool({
           await work();
         } catch (e) {
           console.error(e);
-          if (activeAssetId && onAssetStatusChange) {
-            onAssetStatusChange(activeAssetId, 'error', errorText);
-          }
+          patchActiveAsset({ status: 'error', errorMessage: errorText });
           onPushToast('error', errorText);
         } finally {
           setIsProcessing(false);
         }
       })();
     },
-    [activeAssetId, onAssetStatusChange, onPushToast, setIsProcessing],
+    [patchActiveAsset, onPushToast, setIsProcessing],
   );
 
   const validateSelection = (files: File[], batchVerb: string): File[] | null => {
@@ -118,16 +128,9 @@ export function FrameEditorTool({
   const acceptFiles = (files: File[]) => {
     const filesToProcess = validateSelection(files, 'loading');
     if (!filesToProcess) return;
-    revokeFrameUrls(frames);
-    setActiveAssetId(null);
-    setFrames([]);
-    setSourceFiles(filesToProcess);
-    const kind = classifySourceKind(filesToProcess);
-    if (kind === 'video' || kind === 'static-image') {
-      onPushToast('success', t('app.success_loaded', { filename: filesToProcess[0].name }));
-    } else {
-      processSource(filesToProcess, false);
-    }
+    const newAssets = filesToProcess.map(assetFromFile);
+    setAssetLibrary((prev) => [...prev, ...newAssets]);
+    onPushToast('success', t('app.success_clips_loaded', { count: newAssets.length }));
   };
 
   const appendFiles = useCallback((files: File[]) => {
@@ -137,9 +140,9 @@ export function FrameEditorTool({
   }, [onPushToast, t, fps, startTime, endTime, activeAssetId]);
 
   useEffect(() => {
-    setAppendFilesHandler(appendFiles);
-    return () => setAppendFilesHandler(null);
-  }, [setAppendFilesHandler, appendFiles]);
+    setAppendFramesFromFiles(appendFiles);
+    return () => setAppendFramesFromFiles(null);
+  }, [setAppendFramesFromFiles, appendFiles]);
 
   const processSource = (filesToProcess: File[] = sourceFiles, append: boolean = false) => {
     if (filesToProcess.length === 0) return;
@@ -155,9 +158,7 @@ export function FrameEditorTool({
         if (!append) {
           revokeFrameUrls(frames);
           setFrames([]);
-          if (activeAssetId && onAssetStatusChange) {
-            onAssetStatusChange(activeAssetId, 'extracting');
-          }
+          patchActiveAsset({ status: 'extracting', errorMessage: undefined });
         }
         let extracted: ExtractedFrame[] = [];
         const onExtractProgress = (f: ExtractedFrame[]) => {
@@ -365,57 +366,6 @@ export function FrameEditorTool({
     onPushToast('success', t('app.success_duplicate', { count: selectedFrames.length, s: selectedFrames.length === 1 ? '' : 's' }));
   };
 
-  const handleSaveEdit = (
-    id: string,
-    newDataUrl: string,
-    meta?: { width?: number; height?: number; close?: boolean; message?: string },
-  ) => {
-    const oldFrame = frames.find((f) => f.id === id);
-    if (oldFrame) revokeFrameUrls([oldFrame]); // free the previous blob URL(s)
-    setEditorFrames(frames.map(f => f.id === id ? {
-      ...f,
-      dataUrl: newDataUrl,
-      sourceDataUrl: undefined,
-      width: meta?.width ?? f.width,
-      height: meta?.height ?? f.height,
-    } : f));
-    if (meta?.close !== false) setEditingFrameId(null);
-    onPushToast('success', meta?.message ?? t('app.frame_saved'));
-  };
-
-  const handleBatchCrop = (rect: PixelRect) => {
-    if (!rect.width || !rect.height) return;
-    const croppedCount = frames.filter((frame) => frame.selected).length;
-    if (croppedCount === 0) return onPushToast('info', t('app.select_first'));
-    setEditingFrameId(null);
-    runProcessing('batch-cropping', t('app.applying_crop'), async () => {
-      const updatedFrames = await cropFrames(frames, rect, true);
-      // cropFrames produced fresh data URLs for the selected frames; revoke the
-      // originals now that nothing reads them.
-      revokeFrameUrls(frames.filter((f) => f.selected));
-      setEditorFrames(updatedFrames);
-      onPushToast('success', t('app.success_crop', { count: croppedCount, s: croppedCount === 1 ? '' : 's' }));
-    }, t('app.error_crop'));
-  };
-
-  const handleSplitGridFrame = (id: string, splitFrames: ExtractedFrame[]) => {
-    if (splitFrames.length === 0) return;
-    const idx = frames.findIndex((frame) => frame.id === id);
-    if (idx === -1) return;
-    revokeFrameUrls([frames[idx]]);
-    setEditorFrames([
-      ...frames.slice(0, idx),
-      ...splitFrames,
-      ...frames.slice(idx + 1),
-    ]);
-    setEditingFrameId(null);
-    onPushToast('success', t('app.success_split', { count: splitFrames.length, s: splitFrames.length === 1 ? '' : 's' }));
-  };
-
-  const editingFrameIndex = editingFrameId ? frames.findIndex((frame) => frame.id === editingFrameId) : -1;
-  const editingFrame = editingFrameIndex >= 0 ? frames[editingFrameIndex] : null;
-  const previousEditingFrame = editingFrameIndex > 0 ? frames[editingFrameIndex - 1] : null;
-  const nextEditingFrame = editingFrameIndex >= 0 && editingFrameIndex < frames.length - 1 ? frames[editingFrameIndex + 1] : null;
   const sourceKind = classifySourceKind(sourceFiles);
   const readiness = getWechatReadiness(frames, exportWidth, exportHeight, gifDelay);
 
@@ -460,7 +410,11 @@ export function FrameEditorTool({
               onReverseFrames={handleReverseFrames}
               onRemoveSubsequent={handleRemoveSubsequent}
               onRemovePreceding={handleRemovePreceding}
-              onEditFrame={setEditingFrameId}
+              onEditFrame={(id) => {
+                setEditingAssetId(null);
+                setEditingFrameId(id);
+                setActiveTool('canvas-editor');
+              }}
               onDuplicateSelected={handleDuplicateSelected}
               onSelectNone={handleSelectNone}
               onSelectRange={handleSelectRange}
@@ -494,17 +448,6 @@ export function FrameEditorTool({
         </div>
       )}
 
-      {editingFrameId && (
-        <FrameEditorModal
-          frame={editingFrame}
-          previousFrame={previousEditingFrame}
-          nextFrame={nextEditingFrame}
-          onClose={() => setEditingFrameId(null)}
-          onSave={handleSaveEdit}
-          onBatchCrop={handleBatchCrop}
-          onSplitGrid={handleSplitGridFrame}
-        />
-      )}
     </>
   );
 }
