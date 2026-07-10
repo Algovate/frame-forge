@@ -7,12 +7,12 @@ import { VideoSplitterTool } from './components/tools/VideoSplitterTool';
 import { CanvasEditorTool } from './components/tools/CanvasEditorTool';
 import { AssetLibraryPanel } from './components/sidebar/AssetLibraryPanel';
 import { useAppStore } from './store';
-import { assetFromFile } from './utils/assets';
+import { assetFromFile, getAssetUseTarget } from './utils/assets';
 import { useTranslation } from 'react-i18next';
 
 function App() {
   const {
-    activeTool, setActiveTool, loadAssetIntoFrameEditor, loadFileIntoVideoSplitter, isProcessing,
+    activeTool, setActiveTool, loadAssetIntoFrameEditor, loadFileIntoVideoSplitter, appendFramesFromFiles, isProcessing,
     assetLibrary, setAssetLibrary, setEditingAssetId, setEditingFrameId,
     isAssetPanelOpen, setIsAssetPanelOpen, canvasDirty,
   } = useAppStore();
@@ -53,16 +53,24 @@ function App() {
             <AssetLibraryPanel
               assets={assetLibrary}
               onUseAsset={(asset) => {
-                if (asset.kind === 'image' && asset.file.type !== 'image/gif') {
+                const target = getAssetUseTarget(asset, activeTool);
+                if (target === 'canvas-editor') {
                   openAssetInCanvas(asset.id);
                   return;
                 }
                 if (isProcessing) return;
-                if (activeTool === 'splitter') {
+                if (target === 'splitter') {
                   loadFileIntoVideoSplitter?.(asset.file);
                   return;
                 }
                 loadAssetIntoFrameEditor?.(asset);
+                setActiveTool('studio');
+                setIsAssetPanelOpen(false);
+              }}
+              getUseTarget={(asset) => getAssetUseTarget(asset, activeTool)}
+              onUseSelected={(assets) => {
+                if (isProcessing || !appendFramesFromFiles) return;
+                appendFramesFromFiles(assets.map(({ file }) => file));
                 setActiveTool('studio');
                 setIsAssetPanelOpen(false);
               }}
