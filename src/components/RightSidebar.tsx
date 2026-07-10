@@ -140,6 +140,11 @@ export function RightSidebar(props: RightSidebarProps) {
                 props.setExportWidth(128);
                 props.setExportHeight(128);
                 props.setGifDelay(50);
+              } else if (e.target.value === 'original') {
+                if (previewFrame.width && previewFrame.height) {
+                  props.setExportWidth(previewFrame.width);
+                  props.setExportHeight(previewFrame.height);
+                }
               }
             }}
             disabled={props.isProcessing}
@@ -147,6 +152,10 @@ export function RightSidebar(props: RightSidebarProps) {
             <option value="" disabled hidden>{t('sidebar.presets', 'Presets')}</option>
             <option value="wechat">{t('sidebar.preset_wechat', 'WeChat (240x240, 10fps)')}</option>
             <option value="discord">{t('sidebar.preset_discord', 'Discord (128x128, 20fps)')}</option>
+            <option value="original">
+              {t('sidebar.preset_original', 'Original Size')}
+              {previewFrame.width && previewFrame.height ? ` (${previewFrame.width}x${previewFrame.height})` : ''}
+            </option>
           </select>
         </h2>
         <div className="space-y-3">

@@ -66,6 +66,7 @@
     "presets": "Presets",
     "preset_wechat": "WeChat (240x240, 10fps)",
     "preset_discord": "Discord (128x128, 20fps)",
+    "preset_original": "Original Size",
     "width": "Width",
     "height": "Height",
     "export": "Export",

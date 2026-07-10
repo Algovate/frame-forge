@@ -66,6 +66,7 @@
     "presets": "预设",
     "preset_wechat": "微信 (240x240, 10fps)",
     "preset_discord": "Discord (128x128, 20fps)",
+    "preset_original": "原始尺寸",
     "width": "宽度",
     "height": "高度",
     "export": "导出",
