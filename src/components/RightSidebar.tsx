@@ -81,10 +81,10 @@ export function RightSidebar(props: RightSidebarProps) {
   };
 
   return (
-    <aside className={`lg:col-span-3 space-y-4 h-full overflow-y-auto custom-scrollbar pl-2 pb-6 ${props.className ?? ''}`}>
+    <aside className={`lg:col-span-3 space-y-2.5 h-full overflow-y-auto custom-scrollbar pl-2 pb-4 ${props.className ?? ''}`}>
 
       {/* Preview */}
-      <div className="glass-panel rounded-card p-3 flex flex-col">
+      <div className="glass-panel rounded-card p-2.5 flex flex-col">
         <h2 className={HEADING}>
           {isStatic ? (
             <ImageIcon className="w-5 h-5 text-primary" aria-hidden="true" />
@@ -97,7 +97,7 @@ export function RightSidebar(props: RightSidebarProps) {
           </span>
         </h2>
         {isStatic ? (
-          <div className="frame-checker relative aspect-[4/3] w-full rounded-control border border-hairline overflow-hidden flex items-center justify-center p-3">
+          <div className="frame-checker relative aspect-[4/3] w-full rounded-control border border-hairline overflow-hidden flex items-center justify-center p-2.5">
             <img
               src={previewFrame.dataUrl}
               alt="Selected frame preview"
@@ -112,7 +112,7 @@ export function RightSidebar(props: RightSidebarProps) {
       </div>
 
       {/* Prepare */}
-      <div className="glass-panel rounded-card p-3">
+      <div className="glass-panel rounded-card p-2.5">
         <h2 className={HEADING}>
           <Wand2 className="w-4 h-4 text-matte" aria-hidden="true" /> {t('workflow.refine')}
         </h2>
@@ -147,7 +147,7 @@ export function RightSidebar(props: RightSidebarProps) {
       </div>
 
       {/* Output */}
-      <div className="glass-panel rounded-card p-3">
+      <div className="glass-panel rounded-card p-2.5">
         <h2 className={HEADING}>
           <div className="flex items-center gap-1.5">
             <SlidersHorizontal className="w-4 h-4 text-primary" aria-hidden="true" /> {t('sidebar.output')}
@@ -230,7 +230,7 @@ export function RightSidebar(props: RightSidebarProps) {
       </div>
 
       {/* Export */}
-      <div className="glass-panel rounded-card p-3">
+      <div className="glass-panel rounded-card p-2.5">
         <h2 className={HEADING}>
           <Download className="w-4 h-4 text-primary" aria-hidden="true" /> {t('sidebar.export')}
         </h2>

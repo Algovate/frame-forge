@@ -253,7 +253,7 @@ export function VideoSplitterTool({
   if (!sourceVideo) {
     return (
       <div className="flex-1 min-h-0 w-full">
-        <section className="flex flex-col min-h-0 h-full justify-center">
+        <section className="flex flex-col min-h-0 h-full justify-center overflow-y-auto custom-scrollbar">
           <div className="w-full max-w-xl mx-auto flex flex-col overflow-visible">
             <div className="glass-panel rounded-card p-5">
               <h2 className={HEADING}>
@@ -323,9 +323,9 @@ export function VideoSplitterTool({
       </section>
 
       {/* Right Sidebar */}
-      <section className="lg:col-span-3 min-h-0 flex flex-col space-y-4 overflow-y-auto custom-scrollbar pr-1 pb-6">
+      <section className="lg:col-span-3 min-h-0 flex flex-col space-y-2.5 overflow-y-auto custom-scrollbar pr-1 pb-4">
         {/* Source */}
-        <div className="glass-panel rounded-card p-3">
+        <div className="glass-panel rounded-card p-2.5">
           <h2 className={HEADING}>
             <FileVideo className="w-5 h-5 text-primary" aria-hidden="true" /> {t('splitter.source')}
           </h2>
@@ -352,7 +352,7 @@ export function VideoSplitterTool({
         </div>
 
         {/* Trim */}
-        <div className="glass-panel rounded-card p-3">
+        <div className="glass-panel rounded-card p-2.5">
           <h2 className={HEADING}>
             <SlidersHorizontal className="w-5 h-5 text-primary" aria-hidden="true" /> {t('splitter.trim', 'Trim (Optional)')}
           </h2>
@@ -385,7 +385,7 @@ export function VideoSplitterTool({
         </div>
 
         {/* Grid */}
-        <div className="glass-panel rounded-card p-3">
+        <div className="glass-panel rounded-card p-2.5">
           <h2 className={HEADING}>
             <Grid3X3 className="w-5 h-5 text-primary" aria-hidden="true" /> {t('splitter.grid')}
           </h2>
@@ -395,7 +395,7 @@ export function VideoSplitterTool({
         </div>
 
         {/* Padding */}
-        <div className="glass-panel rounded-card p-3">
+        <div className="glass-panel rounded-card p-2.5">
           <h2 className={HEADING}>
             <Frame className="w-5 h-5 text-primary" aria-hidden="true" /> {t('splitter.padding')}
             <span className="ml-auto flex items-center gap-1">
@@ -429,7 +429,7 @@ export function VideoSplitterTool({
         </div>
 
         {/* Output */}
-        <div className="glass-panel rounded-card p-3">
+        <div className="glass-panel rounded-card p-2.5">
           <h2 className={HEADING}>
             <SlidersHorizontal className="w-5 h-5 text-primary" aria-hidden="true" /> {t('splitter.output')}
           </h2>
