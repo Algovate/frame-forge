@@ -287,6 +287,8 @@ function AssetTile({
             playsInline
             preload="metadata"
             loop
+            disablePictureInPicture
+            disableRemotePlayback
             onMouseEnter={(e) => {
               const video = e.currentTarget;
               playTimeoutRef.current = setTimeout(() => {
