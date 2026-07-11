@@ -258,6 +258,7 @@ function AssetTile({
     : useTarget === 'splitter'
       ? t('assets.split_video')
       : t('assets.make_sticker');
+  const playTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   return (
     <div className="group relative aspect-square overflow-hidden rounded-[8px] border border-hairline bg-black shadow-card transition-colors hover:border-primary/60 focus-within:border-primary">
@@ -286,37 +287,42 @@ function AssetTile({
             playsInline
             preload="metadata"
             loop
-            onMouseEnter={(e) => void e.currentTarget.play()}
+            onMouseEnter={(e) => {
+              const video = e.currentTarget;
+              playTimeoutRef.current = setTimeout(() => {
+                void video.play();
+              }, 500);
+            }}
             onMouseLeave={(e) => {
-              e.currentTarget.pause();
-              e.currentTarget.currentTime = 0;
+              if (playTimeoutRef.current) {
+                clearTimeout(playTimeoutRef.current);
+                playTimeoutRef.current = null;
+              }
+              const video = e.currentTarget;
+              video.pause();
+              video.currentTime = 0;
             }}
             className="absolute inset-0 h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
           />
         ) : (
           <div className="absolute inset-0 bg-black" />
         )}
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/0 opacity-0 transition-all duration-150 group-hover:bg-black/45 group-hover:opacity-100 focus-visible:bg-black/45 focus-visible:opacity-100 pointer-events-none">
-          <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/25 bg-black/55 text-white shadow-pop">
-            <ActionIcon className="h-4 w-4" />
-          </span>
-          <span className="text-[10px] font-medium text-white">{actionLabel}</span>
-        </div>
+
       </button>
 
       <span className={`absolute ${isSelecting ? 'left-8' : 'left-1'} top-1 rounded-[4px] bg-background/70 px-1 text-[9px] font-mono text-white/80 opacity-80 backdrop-blur-sm transition-opacity group-hover:opacity-0 pointer-events-none`}>
         {position}
       </span>
 
-      <div className="absolute right-1 top-1 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="absolute right-1 top-1 flex flex-row gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
         {onRemoveAsset && (
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onRemoveAsset(asset.id); }}
-            className="w-6 h-6 rounded-full bg-black/60 text-white hover:bg-red-500 flex items-center justify-center backdrop-blur-sm transition-colors"
+            className="w-5 h-5 rounded border border-white/20 bg-black/60 text-white hover:bg-red-500 flex items-center justify-center backdrop-blur-sm transition-colors"
             title={t('assets.delete', 'Delete')}
           >
-            <Trash2 className="w-3.5 h-3.5" />
+            <Trash2 className="w-3 h-3" />
           </button>
         )}
         <button
@@ -325,10 +331,10 @@ function AssetTile({
             e.stopPropagation();
             downloadBlob(asset.blob, asset.name || `asset-${asset.id}.mp4`);
           }}
-          className="w-6 h-6 rounded-full bg-black/60 text-white hover:bg-primary flex items-center justify-center backdrop-blur-sm transition-colors"
+          className="w-5 h-5 rounded border border-white/20 bg-black/60 text-white hover:bg-primary flex items-center justify-center backdrop-blur-sm transition-colors"
           title={t('assets.download', 'Download')}
         >
-          <Download className="w-3.5 h-3.5" />
+          <Download className="w-3 h-3" />
         </button>
       </div>
 
