@@ -81,16 +81,9 @@ export function AssetLibraryPanel({
   return (
     <div className="glass-panel rounded-card p-3">
       <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="flex items-center gap-2">
-          <h2 className={`${HEADING} mb-0 flex items-center gap-1.5`}>
-            <Grid3X3 className="w-5 h-5 text-primary" aria-hidden="true" /> {title ?? t('nav.assets', 'Project Assets')}
-          </h2>
-          {onClose && (
-            <button onClick={onClose} className="p-1 rounded-sm text-muted hover:bg-surface-hover hover:text-foreground" title={t('common.collapse', 'Collapse')}>
-              <PanelLeftClose className="w-4 h-4" />
-            </button>
-          )}
-        </div>
+        <h2 className={`${HEADING} mb-0 flex items-center gap-1.5 whitespace-nowrap shrink-0`}>
+          <Grid3X3 className="w-5 h-5 text-primary shrink-0" aria-hidden="true" /> {title ?? t('nav.assets', 'Project Assets')}
+        </h2>
         <div className="text-right leading-tight flex flex-col items-end">
           <div className="flex items-center gap-2">
             {onAddImage && (
@@ -114,7 +107,13 @@ export function AssetLibraryPanel({
                 className="text-muted hover:text-red-500 transition-colors p-0.5 rounded-sm"
                 title={t('assets.clear_all', 'Clear All')}
               >
-                <Trash2 className="w-3.5 h-3.5" />
+                <Trash2 className="w-4 h-4" aria-hidden="true" />
+                <span className="sr-only">{t('assets.clear_all', 'Clear All')}</span>
+              </button>
+            )}
+            {onClose && (
+              <button onClick={onClose} className="p-1 rounded-sm text-muted hover:bg-surface-hover hover:text-foreground ml-1 border-l border-hairline pl-2" title={t('common.collapse', 'Collapse')}>
+                <PanelLeftClose className="w-4 h-4" />
               </button>
             )}
           </div>
