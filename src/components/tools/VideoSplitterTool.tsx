@@ -323,7 +323,7 @@ export function VideoSplitterTool({
       </section>
 
       {/* Right Sidebar */}
-      <section className="lg:col-span-3 min-h-0 flex flex-col">
+      <section className="lg:col-span-3 min-h-0 flex flex-col space-y-4 overflow-y-auto custom-scrollbar pr-1 pb-6">
         {/* Source */}
         <div className="glass-panel rounded-card p-3">
           <h2 className={HEADING}>
