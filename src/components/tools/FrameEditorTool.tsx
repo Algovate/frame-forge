@@ -431,7 +431,7 @@ export function FrameEditorTool({
       {frames.length === 0 ? (
         <div className="flex-1 min-h-0 w-full flex flex-col">
           <section className="flex flex-col min-h-0 h-full overflow-y-auto custom-scrollbar">
-            <div className="w-full max-w-xl mx-auto flex flex-col pt-4 sm:pt-12 pb-12 px-2 shrink-0">
+            <div className="w-full max-w-6xl mx-auto flex flex-col pt-4 sm:pt-12 pb-12 px-2 shrink-0">
               <WorkflowProgress activeStage="source" />
               <ImportScreen
                 sourceFiles={sourceFiles}
