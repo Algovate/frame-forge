@@ -53,7 +53,7 @@ interface AppState {
 export const useAppStore = create<AppState>((set) => ({
   activeTool: 'studio',
   setActiveTool: (tool) => set({ activeTool: tool }),
-  isAssetPanelOpen: false,
+  isAssetPanelOpen: true,
   setIsAssetPanelOpen: (value) => set((state) => ({
     isAssetPanelOpen: typeof value === 'function' ? value(state.isAssetPanelOpen) : value,
   })),
