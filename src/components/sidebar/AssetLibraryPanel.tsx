@@ -6,6 +6,7 @@ import { getBatchStickerEligibility, getSelectedAssets, getVisibleAssets, type A
 import { HEADING } from '../ui';
 import { downloadBlob } from '../../utils/exporters';
 import { useObjectUrlMap } from './useObjectUrlMap';
+import { useHoverPlay } from './useHoverPlay';
 
 interface AssetLibraryPanelProps {
   assets: ProjectAsset[];
@@ -81,7 +82,7 @@ export function AssetLibraryPanel({
   return (
     <div className="glass-panel rounded-card p-3">
       <div className="flex items-start justify-between gap-3 mb-3">
-        <h2 className={`${HEADING} mb-0 flex items-center gap-1.5 whitespace-nowrap shrink-0`}>
+        <h2 className={`${HEADING} mb-0 whitespace-nowrap shrink-0`}>
           <Grid3X3 className="w-5 h-5 text-primary shrink-0" aria-hidden="true" /> {title ?? t('nav.assets', 'Project Assets')}
         </h2>
         <div className="text-right leading-tight flex flex-col items-end">
@@ -238,6 +239,10 @@ export function AssetLibraryPanel({
   );
 }
 
+/** Shared base for a tile's overlay action buttons; append the hover color. */
+const TILE_ACTION_BTN =
+  'w-5 h-5 rounded border border-white/20 bg-black/60 text-white flex items-center justify-center backdrop-blur-sm transition-colors';
+
 function AssetTile({
   asset,
   index,
@@ -268,7 +273,7 @@ function AssetTile({
     : useTarget === 'splitter'
       ? t('assets.split_video')
       : t('assets.make_sticker');
-  const playTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const { onMouseEnter, onMouseLeave } = useHoverPlay(500);
 
   return (
     <div className="group relative aspect-square overflow-hidden rounded-[8px] border border-hairline bg-black shadow-card transition-colors hover:border-primary/60 focus-within:border-primary">
@@ -306,21 +311,8 @@ function AssetTile({
             loop
             disablePictureInPicture
             disableRemotePlayback
-            onMouseEnter={(e) => {
-              const video = e.currentTarget;
-              playTimeoutRef.current = setTimeout(() => {
-                void video.play();
-              }, 500);
-            }}
-            onMouseLeave={(e) => {
-              if (playTimeoutRef.current) {
-                clearTimeout(playTimeoutRef.current);
-                playTimeoutRef.current = null;
-              }
-              const video = e.currentTarget;
-              video.pause();
-              video.currentTime = 0;
-            }}
+            onMouseEnter={onMouseEnter}
+            onMouseLeave={onMouseLeave}
             className="absolute inset-0 h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
           />
         ) : (
@@ -339,7 +331,7 @@ function AssetTile({
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onRemoveAsset(asset.id); }}
-              className="w-5 h-5 rounded border border-white/20 bg-black/60 text-white hover:bg-red-500 flex items-center justify-center backdrop-blur-sm transition-colors"
+              className={`${TILE_ACTION_BTN} hover:bg-red-500`}
               title={t('assets.delete', 'Delete')}
             >
               <Trash2 className="w-3 h-3" />
@@ -351,7 +343,7 @@ function AssetTile({
               e.stopPropagation();
               downloadBlob(asset.blob, asset.name || `asset-${asset.id}.mp4`);
             }}
-            className="w-5 h-5 rounded border border-white/20 bg-black/60 text-white hover:bg-primary flex items-center justify-center backdrop-blur-sm transition-colors"
+            className={`${TILE_ACTION_BTN} hover:bg-primary`}
             title={t('assets.download', 'Download')}
           >
             <Download className="w-3 h-3" />

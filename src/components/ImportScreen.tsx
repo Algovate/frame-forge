@@ -11,6 +11,9 @@ import {
 import type { ProcessingPhase, StickerSourceKind } from '../types';
 import { HEADING, SLIDER_STYLES } from './ui';
 
+/** Shared sizing for the source preview <video>/<img> (sibling branches). */
+const PREVIEW_MEDIA_CLASS = 'w-full h-full object-contain rounded-md';
+
 interface ImportScreenProps {
   sourceFiles: File[];
   isProcessing: boolean;
@@ -179,7 +182,7 @@ export function ImportScreen(props: ImportScreenProps) {
                       <video 
                         ref={videoRef}
                         src={previewUrl} 
-                        className="w-full h-full object-contain rounded-md" 
+                        className={PREVIEW_MEDIA_CLASS}
                         muted 
                         loop 
                         playsInline 
@@ -187,7 +190,7 @@ export function ImportScreen(props: ImportScreenProps) {
                         onLoadedMetadata={handleVideoLoadedMetadata}
                       />
                     ) : (
-                      <img src={previewUrl} alt="Preview" className="w-full h-full object-contain rounded-md" />
+                      <img src={previewUrl} alt="Preview" className={PREVIEW_MEDIA_CLASS} />
                     )}
                   </div>
                   <div className="absolute inset-1 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-md flex flex-col items-center justify-center backdrop-blur-[2px]">

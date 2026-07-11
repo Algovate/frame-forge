@@ -19,6 +19,7 @@ function App() {
   } = useAppStore();
   const { t } = useTranslation();
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const assetsLabel = t('nav.assets', 'Project Assets');
 
   const pushToast = useCallback((type: ToastType, message: string, action?: ToastItem['action']) => {
     const id = Date.now() + Math.random();
@@ -87,9 +88,9 @@ function App() {
           </aside>
         ) : (
           <aside className="w-full shrink-0 flex items-center lg:flex-col lg:w-12 lg:h-full lg:border-r lg:border-hairline lg:pt-2">
-            <button onClick={() => setIsAssetPanelOpen(true)} className="flex items-center gap-2 p-2 rounded-control text-muted hover:text-foreground hover:bg-surface-hover lg:justify-center w-full" title={t('nav.assets', 'Project Assets')}>
+            <button onClick={() => setIsAssetPanelOpen(true)} className="flex items-center gap-2 p-2 rounded-control text-muted hover:text-foreground hover:bg-surface-hover lg:justify-center w-full" title={assetsLabel}>
               <PanelLeft className="w-5 h-5" />
-              <span className="lg:hidden text-sm font-medium">{t('nav.assets', 'Project Assets')}</span>
+              <span className="lg:hidden text-sm font-medium">{assetsLabel}</span>
             </button>
           </aside>
         )}
