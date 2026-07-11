@@ -1,4 +1,4 @@
-import { Layers, RotateCcw, Plus, Languages, Film, Grid3X3, PanelLeft } from 'lucide-react';
+import { Layers, RotateCcw, Plus, Languages, Film, Grid3X3 } from 'lucide-react';
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAppStore } from '../store';
@@ -11,7 +11,6 @@ export function Header() {
   const { t, i18n } = useTranslation();
   const {
     activeTool, setActiveTool, resetWorkspace, appendFramesFromFiles, frames, isProcessing,
-    assetLibrary, isAssetPanelOpen, setIsAssetPanelOpen,
   } = useAppStore();
   const hasFrames = frames.length > 0;
   const isStudioActive = activeTool === 'studio' || activeTool === 'canvas-editor';
@@ -45,11 +44,7 @@ export function Header() {
             className={`min-h-11 flex flex-1 items-center justify-center gap-2 rounded-sm px-3 text-xs font-medium transition-colors sm:flex-none sm:text-sm ${isStudioActive ? 'bg-surface shadow-[0_1px_2px_color-mix(in_oklab,var(--color-foreground),transparent_90%)] text-foreground' : 'text-muted hover:text-foreground'}`}>
             <Film className="w-4 h-4" aria-hidden="true" /> <span>{t('nav.studio', 'Sticker Studio')}</span>
           </button>
-          <button type="button" onClick={() => setIsAssetPanelOpen((open) => !open)} aria-expanded={isAssetPanelOpen}
-            className={`relative min-h-11 flex flex-1 items-center justify-center gap-2 rounded-sm px-3 text-xs font-medium transition-colors sm:flex-none sm:text-sm ${isAssetPanelOpen ? 'bg-surface shadow-[0_1px_2px_color-mix(in_oklab,var(--color-foreground),transparent_90%)] text-foreground' : 'text-muted hover:text-foreground'}`}>
-            <PanelLeft className="w-4 h-4" aria-hidden="true" /> <span>{t('nav.assets', 'Project Assets')}</span>
-            {assetLibrary.length > 0 && <span className="min-w-4 rounded-full bg-primary/15 px-1 text-[10px] font-mono text-primary">{assetLibrary.length}</span>}
-          </button>
+
           <button type="button" onClick={() => setActiveTool('splitter')} aria-current={activeTool === 'splitter' ? 'page' : undefined}
             className={`min-h-11 flex flex-1 items-center justify-center gap-2 rounded-sm px-3 text-xs font-medium transition-colors sm:flex-none sm:text-sm ${activeTool === 'splitter' ? 'bg-surface shadow-[0_1px_2px_color-mix(in_oklab,var(--color-foreground),transparent_90%)] text-foreground' : 'text-muted hover:text-foreground'}`}>
             <Grid3X3 className="w-4 h-4" aria-hidden="true" /> <span>{t('nav.tools', 'Tools')}</span>

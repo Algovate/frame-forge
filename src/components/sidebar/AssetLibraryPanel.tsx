@@ -1,5 +1,5 @@
 import { useCallback, useDeferredValue, useMemo, useRef, useState } from 'react';
-import { Grid3X3, Inbox, Trash2, Download, Plus, Search, X, CheckSquare, Square, Layers } from 'lucide-react';
+import { Grid3X3, Inbox, Trash2, Download, Plus, Search, X, CheckSquare, Square, Layers, PanelLeftClose } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { ProjectAsset } from '../../types';
 import { getBatchStickerEligibility, getSelectedAssets, getVisibleAssets, type AssetLibraryFilter, type AssetUseTarget } from '../../utils/assets';
@@ -17,6 +17,7 @@ interface AssetLibraryPanelProps {
   onUseSelected?: (assets: ProjectAsset[]) => void;
   onRemoveAsset?: (id: string) => void;
   onClearAssets?: () => void;
+  onClose?: () => void;
   onAddImage?: (file: File) => void;
 }
 
@@ -30,6 +31,7 @@ export function AssetLibraryPanel({
   onUseSelected,
   onRemoveAsset,
   onClearAssets,
+  onClose,
   onAddImage,
 }: AssetLibraryPanelProps) {
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -79,9 +81,16 @@ export function AssetLibraryPanel({
   return (
     <div className="glass-panel rounded-card p-3">
       <div className="flex items-start justify-between gap-3 mb-3">
-        <h2 className={`${HEADING} mb-0 flex items-center gap-1.5`}>
-          <Grid3X3 className="w-5 h-5 text-primary" aria-hidden="true" /> {title ?? t('assets.library')}
-        </h2>
+        <div className="flex items-center gap-2">
+          <h2 className={`${HEADING} mb-0 flex items-center gap-1.5`}>
+            <Grid3X3 className="w-5 h-5 text-primary" aria-hidden="true" /> {title ?? t('nav.assets', 'Project Assets')}
+          </h2>
+          {onClose && (
+            <button onClick={onClose} className="p-1 rounded-sm text-muted hover:bg-surface-hover hover:text-foreground" title={t('common.collapse', 'Collapse')}>
+              <PanelLeftClose className="w-4 h-4" />
+            </button>
+          )}
+        </div>
         <div className="text-right leading-tight flex flex-col items-end">
           <div className="flex items-center gap-2">
             {onAddImage && (

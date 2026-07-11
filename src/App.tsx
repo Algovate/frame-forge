@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { PanelLeft } from 'lucide-react';
 import { Header } from './components/Header';
 import { ToastStack, type ToastItem, type ToastType } from './components/Toast';
 import { AmbientBackground } from './components/AmbientBackground';
@@ -48,9 +49,10 @@ function App() {
       </div>
 
       <main className="flex-1 min-h-0 max-w-[1600px] w-full mx-auto relative flex flex-col mt-3 gap-3 lg:flex-row">
-        {isAssetPanelOpen && (
+        {isAssetPanelOpen ? (
           <aside className="w-full shrink-0 custom-scrollbar lg:w-64 lg:h-full lg:overflow-y-auto lg:pb-3">
             <AssetLibraryPanel
+              onClose={() => setIsAssetPanelOpen(false)}
               assets={assetLibrary}
               onUseAsset={(asset) => {
                 const target = getAssetUseTarget(asset, activeTool);
@@ -82,6 +84,13 @@ function App() {
                 openAssetInCanvas(asset.id);
               }}
             />
+          </aside>
+        ) : (
+          <aside className="w-full shrink-0 flex items-center lg:flex-col lg:w-12 lg:h-full lg:border-r lg:border-hairline lg:pt-2">
+            <button onClick={() => setIsAssetPanelOpen(true)} className="flex items-center gap-2 p-2 rounded-control text-muted hover:text-foreground hover:bg-surface-hover lg:justify-center w-full" title={t('nav.assets', 'Project Assets')}>
+              <PanelLeft className="w-5 h-5" />
+              <span className="lg:hidden text-sm font-medium">{t('nav.assets', 'Project Assets')}</span>
+            </button>
           </aside>
         )}
 
