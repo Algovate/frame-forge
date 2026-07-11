@@ -1,5 +1,5 @@
 import { useCallback, useDeferredValue, useMemo, useRef, useState } from 'react';
-import { Grid3X3, Inbox, Film, Trash2, Download, Plus, Pencil, Scissors, Search, X, CheckSquare, Square, Layers } from 'lucide-react';
+import { Grid3X3, Inbox, Trash2, Download, Plus, Search, X, CheckSquare, Square, Layers } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { ProjectAsset } from '../../types';
 import { getBatchStickerEligibility, getSelectedAssets, getVisibleAssets, type AssetLibraryFilter, type AssetUseTarget } from '../../utils/assets';
@@ -252,7 +252,6 @@ function AssetTile({
 }) {
   const position = asset.row !== undefined && asset.col !== undefined ? `${asset.row + 1},${asset.col + 1}` : `${index + 1}`;
   const { t } = useTranslation();
-  const ActionIcon = useTarget === 'canvas-editor' ? Pencil : useTarget === 'splitter' ? Scissors : Film;
   const actionLabel = useTarget === 'canvas-editor'
     ? t('assets.edit_image')
     : useTarget === 'splitter'
@@ -269,7 +268,14 @@ function AssetTile({
       )}
       <button
         type="button"
-        onClick={() => onUseAsset(asset)}
+        onClick={(e) => {
+          if (isSelecting) {
+            e.preventDefault();
+            onToggleSelected(asset.id);
+          } else {
+            onUseAsset(asset);
+          }
+        }}
         aria-label={`${actionLabel}: ${asset.name || `${useLabel} ${position}`}`}
         title={asset.name}
         className="absolute inset-0 w-full h-full text-left"
