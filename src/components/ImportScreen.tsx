@@ -140,12 +140,12 @@ export function ImportScreen(props: ImportScreenProps) {
 
 
   return (
-    <div className="w-full max-w-xl mx-auto flex flex-col mt-2 sm:mt-6 overflow-visible">
+    <div className="w-full max-w-6xl mx-auto flex flex-col lg:flex-row gap-6 mt-2 sm:mt-6 overflow-visible items-start">
       
-      <div className="flex-1 space-y-4">
-        {/* Source */}
-      <div className="glass-panel rounded-card p-4">
-        <h2 className={`${HEADING} mb-3`}>
+      {/* Left Column: Source */}
+      <div className="flex-1 min-w-0 w-full flex flex-col">
+      <div className="glass-panel rounded-card p-4 flex flex-col shadow-sm">
+        <h2 className={`${HEADING} mb-3 shrink-0`}>
           <Upload className="w-5 h-5 text-primary" aria-hidden="true" /> {t('import.sticker_source')}
         </h2>
         <label
@@ -153,7 +153,7 @@ export function ImportScreen(props: ImportScreenProps) {
           onDragOver={onDragOver}
           onDragLeave={onDragLeave}
           onDrop={onDrop}
-          className={`peer-focus-visible:border-primary peer-focus-visible:bg-primary/5 group relative flex flex-col items-center justify-center rounded-control border-2 border-dashed text-center cursor-pointer transition-colors min-h-[120px] p-4 ${
+          className={`peer-focus-visible:border-primary peer-focus-visible:bg-primary/5 group relative flex flex-col flex-1 items-center justify-center rounded-control border-2 border-dashed text-center cursor-pointer transition-colors min-h-[160px] lg:min-h-[360px] p-4 ${
             isDragOver
               ? 'border-primary bg-primary/5 shadow-[0_0_0_4px_var(--accent-glow)]'
               : 'border-hairline-strong hover:border-primary/50 hover:bg-white/[0.02]'
@@ -171,15 +171,15 @@ export function ImportScreen(props: ImportScreenProps) {
             className="peer sr-only"
           />
           {props.sourceFiles.length > 0 ? (
-            <div className="relative w-full h-full min-h-[120px] flex items-center justify-center">
+            <div className="relative w-full h-full flex flex-1 items-center justify-center">
               {previewUrl ? (
                 <>
-                  <div className="absolute inset-0 overflow-hidden rounded-[8px] flex items-center justify-center p-1">
+                  <div className="w-full h-full flex items-center justify-center p-1">
                     {isVideoSource ? (
                       <video 
                         ref={videoRef}
                         src={previewUrl} 
-                        className="max-w-full max-h-full object-contain rounded-md" 
+                        className="w-full h-full object-contain rounded-md" 
                         muted 
                         loop 
                         playsInline 
@@ -187,7 +187,7 @@ export function ImportScreen(props: ImportScreenProps) {
                         onLoadedMetadata={handleVideoLoadedMetadata}
                       />
                     ) : (
-                      <img src={previewUrl} alt="Preview" className="max-w-full max-h-full object-contain rounded-md" />
+                      <img src={previewUrl} alt="Preview" className="w-full h-full object-contain rounded-md" />
                     )}
                   </div>
                   <div className="absolute inset-1 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-md flex flex-col items-center justify-center backdrop-blur-[2px]">
@@ -222,11 +222,12 @@ export function ImportScreen(props: ImportScreenProps) {
           )}
         </label>
       </div>
+      </div>
 
-      {/* Extraction settings */}
+      {/* Right Column: Extraction settings */}
       {props.sourceFiles.length > 0 && isVideoSource && (
-        <div className="glass-panel rounded-card p-4">
-          <h2 className={`${HEADING} mb-3`}>
+        <div className="w-full lg:w-96 shrink-0 flex flex-col glass-panel rounded-card p-4 shadow-sm">
+          <h2 className={`${HEADING} mb-3 shrink-0`}>
             <Settings className="w-5 h-5 text-primary" aria-hidden="true" /> {t('import.extraction_settings')}
           </h2>
           <div className="space-y-4">
@@ -281,8 +282,11 @@ export function ImportScreen(props: ImportScreenProps) {
         </div>
       )}
 
-      {props.sourceFiles.length > 0 && !isVideoSource && processButton}
-      </div>
+      {props.sourceFiles.length > 0 && !isVideoSource && (
+        <div className="w-full lg:w-80 shrink-0">
+          {processButton}
+        </div>
+      )}
     </div>
   );
 }
