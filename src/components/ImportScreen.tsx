@@ -127,7 +127,7 @@ export function ImportScreen(props: ImportScreenProps) {
       type="button"
       onClick={props.onProcessSource}
       disabled={!canProcessSource}
-      className="w-full min-h-[44px] bg-primary hover:bg-primary-hover text-white rounded-control font-semibold flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-[0_0_20px_var(--accent-glow)]"
+      className="w-full min-h-[40px] bg-primary hover:bg-primary-hover text-white rounded-control font-semibold flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-[0_0_20px_var(--accent-glow)]"
     >
       {extracting ? <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" /> : null}
       {extracting ? t('import.extracting') : processLabel}
@@ -140,12 +140,12 @@ export function ImportScreen(props: ImportScreenProps) {
 
 
   return (
-    <div className="w-full max-w-xl mx-auto flex flex-col mt-4 sm:mt-12 overflow-visible">
+    <div className="w-full max-w-xl mx-auto flex flex-col mt-2 sm:mt-6 overflow-visible">
       
-      <div className="flex-1 space-y-6">
+      <div className="flex-1 space-y-4">
         {/* Source */}
-      <div className="glass-panel rounded-card p-5">
-        <h2 className={HEADING}>
+      <div className="glass-panel rounded-card p-4">
+        <h2 className={`${HEADING} mb-3`}>
           <Upload className="w-5 h-5 text-primary" aria-hidden="true" /> {t('import.sticker_source')}
         </h2>
         <label
@@ -153,7 +153,7 @@ export function ImportScreen(props: ImportScreenProps) {
           onDragOver={onDragOver}
           onDragLeave={onDragLeave}
           onDrop={onDrop}
-          className={`peer-focus-visible:border-primary peer-focus-visible:bg-primary/5 group relative flex flex-col items-center justify-center rounded-control border-2 border-dashed text-center cursor-pointer transition-colors min-h-[160px] p-6 ${
+          className={`peer-focus-visible:border-primary peer-focus-visible:bg-primary/5 group relative flex flex-col items-center justify-center rounded-control border-2 border-dashed text-center cursor-pointer transition-colors min-h-[120px] p-4 ${
             isDragOver
               ? 'border-primary bg-primary/5 shadow-[0_0_0_4px_var(--accent-glow)]'
               : 'border-hairline-strong hover:border-primary/50 hover:bg-white/[0.02]'
@@ -171,7 +171,7 @@ export function ImportScreen(props: ImportScreenProps) {
             className="peer sr-only"
           />
           {props.sourceFiles.length > 0 ? (
-            <div className="relative w-full h-full min-h-[140px] flex items-center justify-center">
+            <div className="relative w-full h-full min-h-[120px] flex items-center justify-center">
               {previewUrl ? (
                 <>
                   <div className="absolute inset-0 overflow-hidden rounded-[8px] flex items-center justify-center p-1">
@@ -225,11 +225,11 @@ export function ImportScreen(props: ImportScreenProps) {
 
       {/* Extraction settings */}
       {props.sourceFiles.length > 0 && isVideoSource && (
-        <div className="glass-panel rounded-card p-5">
-          <h2 className={HEADING}>
+        <div className="glass-panel rounded-card p-4">
+          <h2 className={`${HEADING} mb-3`}>
             <Settings className="w-5 h-5 text-primary" aria-hidden="true" /> {t('import.extraction_settings')}
           </h2>
-          <div className="space-y-6">
+          <div className="space-y-4">
             {isVideoSource && videoDuration > 0 && (
               <fieldset>
                 <div className="flex justify-between items-center mb-2">
@@ -238,7 +238,7 @@ export function ImportScreen(props: ImportScreenProps) {
                     {props.startTime.toFixed(2)}s - {actualEndTime.toFixed(2)}s
                   </span>
                 </div>
-                <div className="px-2 pt-1 pb-3">
+                <div className="px-2 pt-1 pb-1">
                   <Slider
                     range
                     min={0}
@@ -258,7 +258,7 @@ export function ImportScreen(props: ImportScreenProps) {
                   <legend className="text-sm text-muted">{t('import.fps')}</legend>
                   <span className="text-xs font-mono text-muted">{props.fps} fps</span>
                 </div>
-                <div className="px-2 pt-1 pb-2">
+                <div className="px-2 pt-1 pb-1">
                   <Slider
                     min={1}
                     max={60}
