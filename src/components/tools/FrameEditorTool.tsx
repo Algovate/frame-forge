@@ -429,7 +429,7 @@ export function FrameEditorTool({
   return (
     <>
       {frames.length === 0 ? (
-        <div className="flex-1 min-h-0 w-full">
+        <div className="flex-1 min-h-0 w-full flex flex-col">
           <section className="flex flex-col min-h-0 h-full justify-center">
             <div className="w-full max-w-xl mx-auto flex flex-col mt-4 sm:mt-12 overflow-visible">
               <WorkflowProgress activeStage="source" />
@@ -451,9 +451,9 @@ export function FrameEditorTool({
           </section>
         </div>
       ) : (
-        <div className="flex-1 min-h-0 w-full">
+        <div className="flex-1 min-h-0 w-full flex flex-col">
           <WorkflowProgress activeStage="curate" />
-          <div className="grid min-h-0 grid-cols-1 gap-4 lg:grid-cols-9">
+          <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-9">
           <section className="lg:col-span-6 flex flex-col relative min-h-0">
             {isProcessing && <ProcessingOverlay message={processMsg} />}
             <FrameGallery
