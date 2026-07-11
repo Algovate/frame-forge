@@ -322,29 +322,31 @@ function AssetTile({
         {position}
       </span>
 
-      <div className="absolute right-1 top-1 flex flex-row gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-        {onRemoveAsset && (
+      {!isSelecting && (
+        <div className="absolute right-1 top-1 flex flex-row gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+          {onRemoveAsset && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onRemoveAsset(asset.id); }}
+              className="w-5 h-5 rounded border border-white/20 bg-black/60 text-white hover:bg-red-500 flex items-center justify-center backdrop-blur-sm transition-colors"
+              title={t('assets.delete', 'Delete')}
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+          )}
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); onRemoveAsset(asset.id); }}
-            className="w-5 h-5 rounded border border-white/20 bg-black/60 text-white hover:bg-red-500 flex items-center justify-center backdrop-blur-sm transition-colors"
-            title={t('assets.delete', 'Delete')}
+            onClick={(e) => {
+              e.stopPropagation();
+              downloadBlob(asset.blob, asset.name || `asset-${asset.id}.mp4`);
+            }}
+            className="w-5 h-5 rounded border border-white/20 bg-black/60 text-white hover:bg-primary flex items-center justify-center backdrop-blur-sm transition-colors"
+            title={t('assets.download', 'Download')}
           >
-            <Trash2 className="w-3 h-3" />
+            <Download className="w-3 h-3" />
           </button>
-        )}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            downloadBlob(asset.blob, asset.name || `asset-${asset.id}.mp4`);
-          }}
-          className="w-5 h-5 rounded border border-white/20 bg-black/60 text-white hover:bg-primary flex items-center justify-center backdrop-blur-sm transition-colors"
-          title={t('assets.download', 'Download')}
-        >
-          <Download className="w-3 h-3" />
-        </button>
-      </div>
+        </div>
+      )}
 
       {asset.status && asset.status !== 'queued' && (
         <span className={`absolute right-1 bottom-1 rounded-full w-2.5 h-2.5 border border-black/50 pointer-events-none ${
