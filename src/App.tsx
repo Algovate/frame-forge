@@ -50,7 +50,7 @@ function App() {
 
       <main className="flex-1 min-h-0 max-w-[1600px] w-full mx-auto relative flex flex-col mt-3 gap-3 lg:flex-row">
         {isAssetPanelOpen ? (
-          <aside className="w-full shrink-0 custom-scrollbar lg:w-64 lg:h-full lg:overflow-y-auto lg:pb-3">
+          <aside className="w-full shrink-0 custom-scrollbar lg:w-72 lg:h-full lg:overflow-y-auto lg:pb-3">
             <AssetLibraryPanel
               onClose={() => setIsAssetPanelOpen(false)}
               assets={assetLibrary}

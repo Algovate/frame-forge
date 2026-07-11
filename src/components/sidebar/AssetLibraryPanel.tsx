@@ -112,9 +112,12 @@ export function AssetLibraryPanel({
               </button>
             )}
             {onClose && (
-              <button onClick={onClose} className="p-1 rounded-sm text-muted hover:bg-surface-hover hover:text-foreground ml-1 border-l border-hairline pl-2" title={t('common.collapse', 'Collapse')}>
-                <PanelLeftClose className="w-4 h-4" />
-              </button>
+              <>
+                <div className="w-[1px] h-4 bg-hairline-strong ml-1 mr-0.5" aria-hidden="true" />
+                <button onClick={onClose} className="p-1 rounded-sm text-muted hover:bg-surface-hover hover:text-foreground" title={t('common.collapse', 'Collapse')}>
+                  <PanelLeftClose className="w-4 h-4" />
+                </button>
+              </>
             )}
           </div>
           {resolutionLabel && <div className="text-[10px] font-mono text-muted">{resolutionLabel}</div>}
