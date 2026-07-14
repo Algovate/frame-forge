@@ -95,9 +95,9 @@ export function CanvasEditorTool({ onPushToast, onBack }: CanvasEditorToolProps)
   const [onionMode, setOnionMode] = useState<OnionMode>('none');
   const [onionOpacity, setOnionOpacity] = useState(35);
   const [shapeMode, setShapeMode] = useState<ShapeMode>('stroke');
-  const [gridRows, setGridRows] = useState(3);
-  const [gridCols, setGridCols] = useState(4);
-  const [gridPadding, setGridPadding] = useState(0);
+  const [gridRows, setGridRows] = useState(2);
+  const [gridCols, setGridCols] = useState(2);
+  const [gridPadding, setGridPadding] = useState(2);
 
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);

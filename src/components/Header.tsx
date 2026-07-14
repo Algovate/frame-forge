@@ -15,8 +15,10 @@ export function Header() {
   const hasFrames = frames.length > 0;
   const isStudioActive = activeTool === 'studio' || activeTool === 'canvas-editor';
 
+  const isZh = i18n.language?.startsWith('zh');
+
   const toggleLanguage = () => {
-    i18n.changeLanguage(i18n.language === 'en' ? 'zh' : 'en');
+    i18n.changeLanguage(isZh ? 'en' : 'zh');
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -66,8 +68,8 @@ export function Header() {
             <RotateCcw className="w-4 h-4" aria-hidden="true" /> <span>{t('header.new_source', 'New Source')}</span>
           </button>
         )}
-        <button type="button" onClick={toggleLanguage} className={HEADER_BUTTON_CLASS} title={i18n.language === 'en' ? 'Switch to Chinese' : '切换到英文'}>
-          <Languages className="w-4 h-4" aria-hidden="true" /> <span>{i18n.language === 'en' ? 'EN' : '中'}</span>
+        <button type="button" onClick={toggleLanguage} className={HEADER_BUTTON_CLASS} title={isZh ? '切换到英文' : 'Switch to Chinese'}>
+          <Languages className="w-4 h-4" aria-hidden="true" /> <span>{isZh ? '中' : 'EN'}</span>
         </button>
       </div>
     </header>

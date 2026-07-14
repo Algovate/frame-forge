@@ -18,6 +18,7 @@
     "@imgly/background-removal": "^1.7.0",
     "gifuct-js": "^2.1.2",
     "i18next": "^26.3.4",
+    "i18next-browser-languagedetector": "^8.2.1",
     "jszip": "^3.10.1",
     "lucide-react": "^1.23.0",
     "rc-slider": "^11.1.9",
