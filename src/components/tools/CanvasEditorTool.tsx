@@ -12,7 +12,8 @@ import {
 } from 'lucide-react';
 import { useAppStore } from '../../store';
 import { loadImage, canvasToBlob, dataUrlToBlob } from '../../utils/media';
-import { createGridRects, normalizeGridSplitOptions, splitCanvasIntoGridFrames } from '../../utils/gridExtractor';
+import { createGridRects, normalizeGridAxisBoundaries, normalizeGridSplitOptions, splitCanvasIntoGridFrames } from '../../utils/gridExtractor';
+import { clientPointToSourcePixel, moveGridBoundary } from '../../utils/gridGuides';
 import { finiteOr } from '../../utils/numbers';
 import {
   clampPixelRect, colorToHex, displayCropToPixelRect, floodFill, replaceColor, hexToColor,
@@ -83,6 +84,8 @@ export function CanvasEditorTool({ onPushToast, onBack }: CanvasEditorToolProps)
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
   const blurredCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const gridOverlayRef = useRef<HTMLDivElement>(null);
+  const gridPreviewFrameRef = useRef<number | null>(null);
 
   const [activeTool, setActiveToolState] = useState<Tool>('pen');
   const [brushSize, setBrushSize] = useState<number>(10);
@@ -98,6 +101,10 @@ export function CanvasEditorTool({ onPushToast, onBack }: CanvasEditorToolProps)
   const [gridRows, setGridRows] = useState(2);
   const [gridCols, setGridCols] = useState(2);
   const [gridPadding, setGridPadding] = useState(2);
+  const [gridXBoundaries, setGridXBoundaries] = useState<number[]>([]);
+  const [gridYBoundaries, setGridYBoundaries] = useState<number[]>([]);
+  const [draggingGuide, setDraggingGuide] = useState<{ axis: 'x' | 'y'; index: number } | null>(null);
+  const [gridPreviewRevision, setGridPreviewRevision] = useState(0);
 
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -178,19 +185,44 @@ export function CanvasEditorTool({ onPushToast, onBack }: CanvasEditorToolProps)
     : null;
   const onionFrame = onionMode === 'previous' ? previousFrame : onionMode === 'next' ? nextFrame : null;
 
-  const { gridFrameCount, gridCellRects, gridPreviewRects } = useMemo(() => {
+  useEffect(() => {
+    if (canvasDimensions.width) setGridXBoundaries(normalizeGridAxisBoundaries(canvasDimensions.width, gridCols));
+  }, [canvasDimensions.width, gridCols]);
+
+  useEffect(() => {
+    if (canvasDimensions.height) setGridYBoundaries(normalizeGridAxisBoundaries(canvasDimensions.height, gridRows));
+  }, [canvasDimensions.height, gridRows]);
+
+  const { gridFrameCount, gridCellRects, gridPreviewRects, gridOptions } = useMemo(() => {
     const normalized = normalizeGridSplitOptions({ rows: gridRows, cols: gridCols, padding: gridPadding });
+    const xBoundaries = normalizeGridAxisBoundaries(canvasDimensions.width || 1, normalized.cols, gridXBoundaries);
+    const yBoundaries = normalizeGridAxisBoundaries(canvasDimensions.height || 1, normalized.rows, gridYBoundaries);
     const showGridPreview = activeTool === 'grid' && canvasDimensions.width > 0 && canvasDimensions.height > 0;
+    const options = { ...normalized, xBoundaries, yBoundaries };
+    const previewRects = showGridPreview ? createGridRects(canvasDimensions.width, canvasDimensions.height, options) : [];
     return {
-      gridFrameCount: normalized.rows * normalized.cols,
+      gridFrameCount: previewRects.length,
       gridCellRects: showGridPreview && normalized.padding > 0
-        ? createGridRects(canvasDimensions.width, canvasDimensions.height, { ...normalized, padding: 0 })
+        ? createGridRects(canvasDimensions.width, canvasDimensions.height, { ...options, padding: 0 })
         : [],
-      gridPreviewRects: showGridPreview
-        ? createGridRects(canvasDimensions.width, canvasDimensions.height, normalized)
-        : [],
+      gridPreviewRects: previewRects,
+      gridOptions: options,
     };
-  }, [activeTool, gridRows, gridCols, gridPadding, canvasDimensions.width, canvasDimensions.height]);
+  }, [activeTool, gridRows, gridCols, gridPadding, gridXBoundaries, gridYBoundaries, canvasDimensions.width, canvasDimensions.height]);
+
+  const gridPreviewImages = useMemo(() => {
+    const canvas = canvasRef.current;
+    // The revision is bumped after every canvas write and guide drag frame;
+    // keeping the guard here makes that dependency explicit to hook tooling.
+    if (gridPreviewRevision < 0 || activeTool !== 'grid' || !canvas) return [];
+    return gridPreviewRects.map((rect) => {
+      const preview = document.createElement('canvas');
+      preview.width = rect.width;
+      preview.height = rect.height;
+      preview.getContext('2d')?.drawImage(canvas, rect.x, rect.y, rect.width, rect.height, 0, 0, rect.width, rect.height);
+      return preview.toDataURL('image/png');
+    });
+  }, [activeTool, gridPreviewRects, gridPreviewRevision]);
 
   const setViewportScale = useCallback((nextScale: number, anchor?: { x: number; y: number }) => {
     setScale((prevScale) => {
@@ -255,6 +287,7 @@ export function CanvasEditorTool({ onPushToast, onBack }: CanvasEditorToolProps)
     setCanvasDimensions({ width: img.width, height: img.height });
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, 0, 0);
+    setGridPreviewRevision((revision) => revision + 1);
   };
 
   const loadImageToCanvas = (dataUrl: string) => {
@@ -262,6 +295,7 @@ export function CanvasEditorTool({ onPushToast, onBack }: CanvasEditorToolProps)
   };
 
   const saveState = (dataUrl: string, dirty = true) => {
+    setGridPreviewRevision((revision) => revision + 1);
     setHistory((prev) => {
       const newHistory = prev.slice(0, historyIndex + 1);
       newHistory.push(dataUrl);
@@ -380,6 +414,45 @@ export function CanvasEditorTool({ onPushToast, onBack }: CanvasEditorToolProps)
       x: (clientX - rect.left) * (canvas.width / rect.width),
       y: (clientY - rect.top) * (canvas.height / rect.height),
     };
+  };
+
+  const scheduleGridPreview = useCallback(() => {
+    if (gridPreviewFrameRef.current !== null) return;
+    gridPreviewFrameRef.current = requestAnimationFrame(() => {
+      gridPreviewFrameRef.current = null;
+      setGridPreviewRevision((revision) => revision + 1);
+    });
+  }, []);
+
+  useEffect(() => () => {
+    if (gridPreviewFrameRef.current !== null) cancelAnimationFrame(gridPreviewFrameRef.current);
+  }, []);
+
+  const handleGuidePointerDown = (axis: 'x' | 'y', index: number, event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || event.altKey) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDraggingGuide({ axis, index });
+  };
+
+  const handleGuidePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!draggingGuide || !gridOverlayRef.current) return;
+    const sourceSize = draggingGuide.axis === 'x' ? canvasDimensions.width : canvasDimensions.height;
+    const target = clientPointToSourcePixel(
+      draggingGuide.axis === 'x' ? event.clientX : event.clientY,
+      gridOverlayRef.current.getBoundingClientRect(),
+      sourceSize,
+      draggingGuide.axis,
+    );
+    const setBoundaries = draggingGuide.axis === 'x' ? setGridXBoundaries : setGridYBoundaries;
+    setBoundaries((boundaries) => moveGridBoundary(boundaries, draggingGuide.index, target));
+    scheduleGridPreview();
+  };
+
+  const stopGuideDrag = (event?: React.PointerEvent<HTMLDivElement>) => {
+    if (event?.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    setDraggingGuide(null);
   };
 
   const handlePointerDown = (e: React.MouseEvent | React.TouchEvent) => {
@@ -574,9 +647,7 @@ export function CanvasEditorTool({ onPushToast, onBack }: CanvasEditorToolProps)
 
   const handleSplitGrid = () => {
     if (!activeSourceUrl || !canvasRef.current) return;
-    const splitFrames = splitCanvasIntoGridFrames(canvasRef.current, {
-      rows: gridRows, cols: gridCols, padding: gridPadding,
-    }, {
+    const splitFrames = splitCanvasIntoGridFrames(canvasRef.current, gridOptions, {
       startTime: currentFrame ? currentFrame.time : 0,
       timeStep: 0.1,
     });
@@ -753,6 +824,28 @@ export function CanvasEditorTool({ onPushToast, onBack }: CanvasEditorToolProps)
               {activeTool === 'grid' && gridPreviewRects.map((rect, i) => (
                 <div key={i} className="absolute border border-dashed border-red-500/50 pointer-events-none" style={{ left: rect.x * scale, top: rect.y * scale, width: rect.width * scale, height: rect.height * scale }} />
               ))}
+              {activeTool === 'grid' && (
+                <div ref={gridOverlayRef} className="absolute inset-0 z-20 pointer-events-none" aria-label={t('editor.grid_guides', 'Adjustable grid guides')}>
+                  {gridOptions.xBoundaries?.slice(1, -1).map((boundary, offset) => {
+                    const index = offset + 1;
+                    return <div key={`x-${index}`} role="slider" tabIndex={0} aria-label={t('editor.grid_vertical_guide', 'Vertical split guide')} aria-orientation="vertical" aria-valuemin={0} aria-valuemax={canvasDimensions.width} aria-valuenow={boundary}
+                      className="absolute top-0 bottom-0 -ml-2 w-4 cursor-col-resize pointer-events-auto group"
+                      style={{ left: boundary * scale }} onPointerDown={(event) => handleGuidePointerDown('x', index, event)} onPointerMove={handleGuidePointerMove} onPointerUp={stopGuideDrag} onPointerCancel={stopGuideDrag} onPointerLeave={stopGuideDrag} onLostPointerCapture={stopGuideDrag}>
+                      <span className="absolute left-1/2 top-0 bottom-0 w-px -translate-x-1/2 bg-primary shadow-[0_0_8px_var(--color-primary)]" />
+                      <span className="absolute left-1/2 top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-primary shadow" />
+                    </div>;
+                  })}
+                  {gridOptions.yBoundaries?.slice(1, -1).map((boundary, offset) => {
+                    const index = offset + 1;
+                    return <div key={`y-${index}`} role="slider" tabIndex={0} aria-label={t('editor.grid_horizontal_guide', 'Horizontal split guide')} aria-orientation="horizontal" aria-valuemin={0} aria-valuemax={canvasDimensions.height} aria-valuenow={boundary}
+                      className="absolute left-0 right-0 -mt-2 h-4 cursor-row-resize pointer-events-auto group"
+                      style={{ top: boundary * scale }} onPointerDown={(event) => handleGuidePointerDown('y', index, event)} onPointerMove={handleGuidePointerMove} onPointerUp={stopGuideDrag} onPointerCancel={stopGuideDrag} onPointerLeave={stopGuideDrag} onLostPointerCapture={stopGuideDrag}>
+                      <span className="absolute top-1/2 left-0 right-0 h-px -translate-y-1/2 bg-primary shadow-[0_0_8px_var(--color-primary)]" />
+                      <span className="absolute top-1/2 left-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-primary shadow" />
+                    </div>;
+                  })}
+                </div>
+              )}
             </div>
 
             <div className="absolute bottom-4 right-4 flex items-center gap-1 bg-background/80 p-1 rounded-control backdrop-blur-sm shadow-sm border border-hairline z-20">
@@ -825,6 +918,19 @@ export function CanvasEditorTool({ onPushToast, onBack }: CanvasEditorToolProps)
                     <label><span className="block text-[10px] text-muted">{t('editor.rows', 'Rows')}</span><input type="number" min={1} max={20} value={gridRows} onChange={(e) => setGridRows(finiteOr(e.currentTarget.valueAsNumber, 1))} className="w-full px-2 py-1 bg-surface border border-hairline rounded-control text-xs font-mono text-foreground focus:border-primary transition-colors" /></label>
                     <label><span className="block text-[10px] text-muted">{t('editor.cols', 'Cols')}</span><input type="number" min={1} max={20} value={gridCols} onChange={(e) => setGridCols(finiteOr(e.currentTarget.valueAsNumber, 1))} className="w-full px-2 py-1 bg-surface border border-hairline rounded-control text-xs font-mono text-foreground focus:border-primary transition-colors" /></label>
                     <label><span className="block text-[10px] text-muted">{t('editor.pad', 'Pad')}</span><input type="number" min={0} max={200} value={gridPadding} onChange={(e) => setGridPadding(finiteOr(e.currentTarget.valueAsNumber, 0))} className="w-full px-2 py-1 bg-surface border border-hairline rounded-control text-xs font-mono text-foreground focus:border-primary transition-colors" /></label>
+                  </div>
+                  <p className="text-[10px] text-muted">{t('editor.grid_drag_hint', 'Drag the blue guides on the canvas to fine-tune each split.')}</p>
+                  <div>
+                    <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted/70">{t('editor.grid_preview', 'Split preview')} · {gridFrameCount}</p>
+                    <div className="grid grid-cols-3 gap-1.5 max-h-44 overflow-y-auto custom-scrollbar pr-1">
+                      {gridPreviewImages.map((src, index) => {
+                        const rect = gridPreviewRects[index];
+                        return <figure key={`${src.slice(-16)}-${index}`} className="min-w-0">
+                          <img src={src} alt={t('editor.grid_preview_item', { index: index + 1 })} className="aspect-square w-full rounded-sm border border-hairline object-cover bg-background" />
+                          <figcaption className="mt-0.5 truncate text-[9px] font-mono text-muted">{index + 1} · {rect.width}×{rect.height}</figcaption>
+                        </figure>;
+                      })}
+                    </div>
                   </div>
                   <button type="button" onClick={handleSplitGrid} className="w-full min-h-[40px] rounded-control bg-primary hover:bg-primary-hover text-white text-sm font-semibold flex items-center justify-center gap-1.5"><Grid3X3 className="w-4 h-4" /> {t('editor.split_frames', { count: gridFrameCount })}</button>
                 </div>

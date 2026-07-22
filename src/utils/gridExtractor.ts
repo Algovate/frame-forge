@@ -6,6 +6,8 @@ export interface GridSplitOptions {
   rows: number;
   cols: number;
   padding: number;
+  xBoundaries?: number[];
+  yBoundaries?: number[];
 }
 
 export interface GridRect {
@@ -19,7 +21,32 @@ export const normalizeGridSplitOptions = (options: GridSplitOptions): GridSplitO
   rows: clampInt(options.rows, 1, 20),
   cols: clampInt(options.cols, 1, 20),
   padding: clampInt(options.padding, 0, 200),
+  xBoundaries: options.xBoundaries,
+  yBoundaries: options.yBoundaries,
 });
+
+/**
+ * Return integer source-pixel boundaries for one grid axis. A cell can never
+ * be smaller than one pixel, so an undersized image has fewer effective cells
+ * than the requested grid count.
+ */
+export const normalizeGridAxisBoundaries = (
+  size: number,
+  requestedCells: number,
+  values?: number[],
+): number[] => {
+  const axisSize = Math.max(1, Math.floor(Number.isFinite(size) ? size : 1));
+  const cells = Math.min(clampInt(requestedCells, 1, 20), axisSize);
+  const equal = Array.from({ length: cells + 1 }, (_, index) => Math.round(index * axisSize / cells));
+  if (!values || values.length !== cells + 1 || values.some((value) => !Number.isFinite(value))) return equal;
+
+  const boundaries = values.map((value) => Math.round(value));
+  if (boundaries[0] !== 0 || boundaries.at(-1) !== axisSize) return equal;
+  for (let index = 1; index < boundaries.length; index++) {
+    if (boundaries[index] <= boundaries[index - 1] || boundaries[index] > axisSize) return equal;
+  }
+  return boundaries;
+};
 
 export const createGridRects = (
   imageWidth: number,
@@ -27,25 +54,29 @@ export const createGridRects = (
   options: GridSplitOptions,
 ): GridRect[] => {
   const { rows, cols, padding } = normalizeGridSplitOptions(options);
-  const cellWidth = imageWidth / cols;
-  const cellHeight = imageHeight / rows;
+  const width = Math.max(1, Math.floor(imageWidth));
+  const height = Math.max(1, Math.floor(imageHeight));
+  const xBoundaries = normalizeGridAxisBoundaries(width, cols, options.xBoundaries);
+  const yBoundaries = normalizeGridAxisBoundaries(height, rows, options.yBoundaries);
   const rects: GridRect[] = [];
 
-  for (let row = 0; row < rows; row++) {
-    for (let col = 0; col < cols; col++) {
-      const x0 = Math.round(col * cellWidth) + padding;
-      const y0 = Math.round(row * cellHeight) + padding;
-      const x1 = Math.round((col + 1) * cellWidth) - padding;
-      const y1 = Math.round((row + 1) * cellHeight) - padding;
-      const x = Math.max(0, Math.min(imageWidth - 1, x0));
-      const y = Math.max(0, Math.min(imageHeight - 1, y0));
-      const maxWidth = Math.max(1, imageWidth - x);
-      const maxHeight = Math.max(1, imageHeight - y);
+  for (let row = 0; row < yBoundaries.length - 1; row++) {
+    for (let col = 0; col < xBoundaries.length - 1; col++) {
+      const rawX = xBoundaries[col];
+      const rawY = yBoundaries[row];
+      const rawWidth = xBoundaries[col + 1] - rawX;
+      const rawHeight = yBoundaries[row + 1] - rawY;
+      // Cap each axis separately so very large padding cannot collapse two
+      // adjacent cells onto the same edge pixel.
+      const insetX = Math.min(padding, Math.floor((rawWidth - 1) / 2));
+      const insetY = Math.min(padding, Math.floor((rawHeight - 1) / 2));
+      const x = rawX + insetX;
+      const y = rawY + insetY;
       rects.push({
         x,
         y,
-        width: Math.max(1, Math.min(maxWidth, x1 - x0)),
-        height: Math.max(1, Math.min(maxHeight, y1 - y0)),
+        width: rawWidth - insetX * 2,
+        height: rawHeight - insetY * 2,
       });
     }
   }
