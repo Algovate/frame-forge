@@ -1,16 +1,27 @@
 import { removeBackground, type Config } from '@imgly/background-removal';
 import type { ExtractedFrame, MattingMode } from '../types';
-import { loadImage } from './media';
+import { loadImage, canvasToBlobUrl } from './media';
 import { cropToCanvas, type PixelRect } from './canvasEditor';
 
 const DEDUP_THUMB = 64;
 const DEDUP_PIXEL_THRESHOLD = 30;
 
+// Cache of each source URL's 64×64 thumbnail ImageData, so the three detectors
+// (duplicates / loop / jump) — and repeat runs — don't each re-decode every
+// full-resolution frame. Keyed by URL: a transformed frame (new dataUrl after
+// matting/crop/edit) simply gets a fresh entry. Entries are ~16 KB each,
+// bounded by the number of distinct frames processed in a session.
+const thumbCache = new Map<string, Uint8ClampedArray>();
+
 // Helper to get image data for a frame
 const getFrameImageData = async (ctx: CanvasRenderingContext2D, dataUrl: string) => {
+  const cached = thumbCache.get(dataUrl);
+  if (cached) return cached;
   const img = await loadImage(dataUrl);
   ctx.drawImage(img, 0, 0, DEDUP_THUMB, DEDUP_THUMB);
-  return ctx.getImageData(0, 0, DEDUP_THUMB, DEDUP_THUMB).data;
+  const data = ctx.getImageData(0, 0, DEDUP_THUMB, DEDUP_THUMB).data;
+  thumbCache.set(dataUrl, data);
+  return data;
 };
 
 // Returns similarity percentage (0-100) where 100 is identical
@@ -390,10 +401,16 @@ export const cropFrames = async (frames: ExtractedFrame[], rect: PixelRect, sele
       const cropped = cropToCanvas(img, rect);
       if (!cropped) return frame;
       const croppedSource = sourceImg ? cropToCanvas(sourceImg, rect) : undefined;
+      // Encode off the main thread via toBlob (vs sync toDataURL); the resulting
+      // blob: URLs are revoked later by revokeFrameUrls on delete/replace.
+      const [dataUrl, sourceDataUrl] = await Promise.all([
+        canvasToBlobUrl(cropped, 'image/png'),
+        croppedSource ? canvasToBlobUrl(croppedSource, 'image/png') : undefined,
+      ]);
       return {
         ...frame,
-        dataUrl: cropped.toDataURL('image/png'),
-        sourceDataUrl: croppedSource?.toDataURL('image/png') ?? frame.sourceDataUrl,
+        dataUrl,
+        sourceDataUrl: sourceDataUrl ?? frame.sourceDataUrl,
         width: cropped.width,
         height: cropped.height,
       };
